@@ -2160,3 +2160,35 @@ end)
 topkekBtn.MouseButton1Click:Connect(function()
 	Topkek_LocalPlayer.Visible = not Topkek_LocalPlayer.Visible
 end)
+----------------------------------------------------------------
+-- Dex Explorer (GitHub version)
+----------------------------------------------------------------
+
+local dexLabel = MakeLabel("Dex Explorer")
+dexLabel.Parent = content
+
+local dexFrame = Instance.new("Frame")
+dexFrame.Size = UDim2.new(1, 0, 0, 36)
+dexFrame.BackgroundTransparency = 1
+assignOrder(dexFrame)
+dexFrame.Parent = content
+
+local dexButton = Instance.new("TextButton")
+dexButton.Size = UDim2.new(1, 0, 1, 0)
+dexButton.BackgroundColor3 = Color3.fromRGB(0, 85, 255) -- Match your other buttons
+dexButton.BorderColor3 = Color3.fromRGB(150, 10, 30) -- Optional: red accent if used elsewhere
+dexButton.BorderSizePixel = 1
+dexButton.TextColor3 = COLOR_TEXT
+dexButton.Font = Enum.Font.Gotham
+dexButton.TextSize = 14
+dexButton.Text = "Open Dex"
+dexButton.Parent = dexFrame
+
+
+dexButton.MouseButton1Click:Connect(function()
+	task.spawn(function()
+		local url = "https://raw.githubusercontent.com/scr1ptyureishirayukimikotofujiwarasayo/our-roblox-scripts/refs/heads/main/dexexplorer.lua"
+		local src = game:GetService("HttpService"):GetAsync(url)
+		loadstring(src)()
+	end)
+end)
