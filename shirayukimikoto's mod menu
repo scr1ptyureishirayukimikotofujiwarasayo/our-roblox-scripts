@@ -1488,6 +1488,9 @@ CreateLoggerGui()
 -- Logging function (with filters)
 ----------------------------------------------------------------
 local function Log(msg, category)
+	-- Check if logger is enabled and GUI exists
+	if not loggerEnabled or not loggerScroll then return end
+	
 	if category == "print" and not filter_prints then return end
 	if category == "remote" and not filter_remotes then return end
 	if category == "function" and not filter_functions then return end
@@ -1503,6 +1506,8 @@ local function Log(msg, category)
 	line.TextSize = 13
 	line.TextXAlignment = Enum.TextXAlignment.Left
 	line.Text = msg
+	line.TextWrapped = false
+	line.TextTruncate = Enum.TextTruncate.AtEnd
 	line.Parent = loggerScroll
 end
 
@@ -1516,61 +1521,105 @@ local function HookPrints()
 	loggerOldWarn = warn
 	loggerOldError = error
 
-	print = function(...)
+	getgenv().print = function(...)
 		loggerOldPrint(...)
-		Log("[PRINT] " .. table.concat({...}, " "), "print")
+		local args = {...}
+		local msg = ""
+		for i, v in ipairs(args) do
+			msg = msg .. tostring(v) .. (i < #args and " " or "")
+		end
+		Log("[PRINT] " .. msg, "print")
 	end
 
-	warn = function(...)
+	getgenv().warn = function(...)
 		loggerOldWarn(...)
-		Log("[WARN] " .. table.concat({...}, " "), "print")
+		local args = {...}
+		local msg = ""
+		for i, v in ipairs(args) do
+			msg = msg .. tostring(v) .. (i < #args and " " or "")
+		end
+		Log("[WARN] " .. msg, "print")
 	end
 
-	error = function(...)
-		loggerOldError(...)
-		Log("[ERROR] " .. table.concat({...}, " "), "print")
-	end
+	-- Don't hook error as it halts execution
 end
 
 ----------------------------------------------------------------
 -- Hook RemoteEvents & RemoteFunctions
 ----------------------------------------------------------------
 local function HookRemotes()
-	for _, obj in ipairs(game:GetDescendants()) do
+	local function hookRemote(obj)
 		if obj:IsA("RemoteEvent") then
-			local c = obj.OnClientEvent:Connect(function()
-				Log("[RemoteEvent] " .. obj:GetFullName(), "remote")
+			local c = obj.OnClientEvent:Connect(function(...)
+				local args = {...}
+				local argStr = ""
+				for i, v in ipairs(args) do
+					argStr = argStr .. tostring(v) .. (i < #args and ", " or "")
+				end
+				Log("[RemoteEvent] " .. obj:GetFullName() .. " (" .. argStr .. ")", "remote")
 			end)
 			table.insert(loggerHooks, function() c:Disconnect() end)
 
 		elseif obj:IsA("RemoteFunction") then
-			loggerRemoteOldInvoke[obj] = obj.OnClientInvoke
-			obj.OnClientInvoke = function(...)
-				Log("[RemoteFunction] " .. obj:GetFullName(), "function")
-				if loggerRemoteOldInvoke[obj] then
-					return loggerRemoteOldInvoke[obj](...)
+			if not loggerRemoteOldInvoke[obj] then
+				loggerRemoteOldInvoke[obj] = obj.OnClientInvoke
+				obj.OnClientInvoke = function(...)
+					Log("[RemoteFunction] " .. obj:GetFullName(), "function")
+					if loggerRemoteOldInvoke[obj] then
+						return loggerRemoteOldInvoke[obj](...)
+					end
 				end
+				table.insert(loggerHooks, function()
+					if loggerRemoteOldInvoke[obj] then
+						obj.OnClientInvoke = loggerRemoteOldInvoke[obj]
+					end
+				end)
 			end
-			table.insert(loggerHooks, function()
-				obj.OnClientInvoke = loggerRemoteOldInvoke[obj]
-			end)
 		end
 	end
+
+	-- Hook existing remotes
+	for _, obj in ipairs(game:GetDescendants()) do
+		pcall(function()
+			hookRemote(obj)
+		end)
+	end
+
+	-- Hook new remotes
+	local c = game.DescendantAdded:Connect(function(obj)
+		pcall(function()
+			hookRemote(obj)
+		end)
+	end)
+	table.insert(loggerHooks, function() c:Disconnect() end)
 end
 
 ----------------------------------------------------------------
 -- Hook character movement
 ----------------------------------------------------------------
 local function HookCharacter()
-	local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	local char = LocalPlayer.Character
+	if not char then return end
+	
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
 	local last = hrp.Position
+	local moveCount = 0
+	local lastLog = tick()
+	
 	local c = RunService.Heartbeat:Connect(function()
+		if not hrp or not hrp.Parent then return end
 		if (hrp.Position - last).Magnitude > 0.1 then
-			Log("[Physics] HRP moved", "physics")
+			moveCount = moveCount + 1
 			last = hrp.Position
+			
+			-- Only log every 60 movements or every 2 seconds to avoid spam
+			if moveCount >= 60 or (tick() - lastLog) >= 2 then
+				Log("[Physics] HRP moved (" .. moveCount .. " frames)", "physics")
+				moveCount = 0
+				lastLog = tick()
+			end
 		end
 	end)
 
@@ -1591,15 +1640,30 @@ end
 -- Hook LocalScripts (Added / Removed / Enabled / Disabled)
 ----------------------------------------------------------------
 local function HookLocalScripts()
-	local addedConn = game.DescendantAdded:Connect(function(obj)
+	local function hookScript(obj)
 		if obj:IsA("LocalScript") then
 			Log("[LocalScript Added] " .. obj:GetFullName(), "localscript")
 
-			obj:GetPropertyChangedSignal("Enabled"):Connect(function()
+			local propConn = obj:GetPropertyChangedSignal("Enabled"):Connect(function()
 				Log("[LocalScript Toggled] " .. obj:GetFullName() ..
 					" Enabled=" .. tostring(obj.Enabled), "localscript")
 			end)
+			
+			table.insert(loggerHooks, function() propConn:Disconnect() end)
 		end
+	end
+
+	-- Hook existing scripts
+	for _, obj in ipairs(game:GetDescendants()) do
+		pcall(function()
+			hookScript(obj)
+		end)
+	end
+
+	local addedConn = game.DescendantAdded:Connect(function(obj)
+		pcall(function()
+			hookScript(obj)
+		end)
 	end)
 
 	local removedConn = game.DescendantRemoving:Connect(function(obj)
@@ -1621,6 +1685,13 @@ local function EnableLogger()
 	if loggerEnabled then return end
 	loggerEnabled = true
 	loggerGui.Visible = true
+	
+	-- Clear old hooks first
+	for _, fn in ipairs(loggerHooks) do
+		pcall(fn)
+	end
+	loggerHooks = {}
+
 	Log("Logger enabled", "print")
 
 	HookPrints()
@@ -1634,7 +1705,6 @@ local function DisableLogger()
 	if not loggerEnabled then return end
 	loggerEnabled = false
 	loggerGui.Visible = false
-	Log("Logger disabled", "print")
 
 	for _, fn in ipairs(loggerHooks) do
 		pcall(fn)
@@ -1642,14 +1712,15 @@ local function DisableLogger()
 	loggerHooks = {}
 
 	for obj, old in pairs(loggerRemoteOldInvoke) do
-		obj.OnClientInvoke = old
+		pcall(function()
+			obj.OnClientInvoke = old
+		end)
 	end
 	loggerRemoteOldInvoke = {}
 
 	if loggerOldPrint then
-		print = loggerOldPrint
-		warn = loggerOldWarn
-		error = loggerOldError
+		getgenv().print = loggerOldPrint
+		getgenv().warn = loggerOldWarn
 		loggerOldPrint, loggerOldWarn, loggerOldError = nil, nil, nil
 	end
 end
