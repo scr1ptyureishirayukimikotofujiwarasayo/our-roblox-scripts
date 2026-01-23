@@ -1564,11 +1564,11 @@ dexButton.MouseButton1Click:Connect(function()
 end)
 
 -- ===== TOPK3K GUI =====
-local topkekLabel = MakeLabel("Topk3k Client")
-topkekLabel.Parent = content
+local topk3kLabel = MakeLabel("Topk3k Client")
+topk3kLabel.Parent = content
 
-local topkekButton = MakeButton("Open fujiwarasayo's topk3k")
-topkekButton.Parent = content
+local topk3kButton = MakeButton("Open fujiwarasayo's topk3k")
+topk3kButton.Parent = content
 
 -- Create Topk3k GUI
 local Topk3kGui
@@ -1585,8 +1585,8 @@ local function CreateTopk3kGui()
     
     Topk3kBase = Instance.new("Frame")
     Topk3kBase.Name = "Base"
-    Topk3kBase.Size = UDim2.new(0, 450, 0, 300)
-    Topk3kBase.Position = UDim2.new(0.5, -225, 0.5, -150)
+    Topk3kBase.Size = UDim2.new(0, 500, 0, 400)
+    Topk3kBase.Position = UDim2.new(0.5, -250, 0.5, -200)
     Topk3kBase.BackgroundColor3 = Color3.fromRGB(14, 23, 29)
     Topk3kBase.BorderColor3 = Color3.fromRGB(4, 7, 9)
     Topk3kBase.BorderSizePixel = 2
@@ -1597,8 +1597,8 @@ local function CreateTopk3kGui()
     -- Top Bar
     local Top = Instance.new("Frame")
     Top.Name = "Top"
-    Top.Size = UDim2.new(1, -20, 0, 20)
-    Top.Position = UDim2.new(0, 10, 0, 7)
+    Top.Size = UDim2.new(1, -20, 0, 30)
+    Top.Position = UDim2.new(0, 10, 0, 10)
     Top.BackgroundColor3 = Color3.fromRGB(7, 11, 15)
     Top.BackgroundTransparency = 0.5
     Top.BorderColor3 = Color3.fromRGB(62, 62, 62)
@@ -1606,10 +1606,10 @@ local function CreateTopk3kGui()
     
     local First = Instance.new("TextLabel")
     First.Name = "First"
-    First.Size = UDim2.new(1, 0, 1, 0)
+    First.Size = UDim2.new(0.7, 0, 1, 0)
     First.BackgroundTransparency = 1
-    First.Font = Enum.Font.SourceSans
-    First.TextSize = 18
+    First.Font = Enum.Font.SourceSansBold
+    First.TextSize = 16
     First.Text = "  fujiwarasayo's T0PK3K"
     First.TextColor3 = Color3.fromRGB(184, 7, 54)
     First.TextStrokeTransparency = 0
@@ -1618,34 +1618,22 @@ local function CreateTopk3kGui()
     
     local Second = Instance.new("TextLabel")
     Second.Name = "Second"
-    Second.Size = UDim2.new(0, 100, 1, 0)
-    Second.Position = UDim2.new(1, -125, 0, 0)
+    Second.Size = UDim2.new(0.3, 0, 1, 0)
+    Second.Position = UDim2.new(0.7, 0, 0, 0)
     Second.BackgroundTransparency = 1
-    Second.Font = Enum.Font.SourceSans
-    Second.TextSize = 18
+    Second.Font = Enum.Font.SourceSansBold
+    Second.TextSize = 16
     Second.Text = "Client Edition"
     Second.TextColor3 = Color3.fromRGB(184, 7, 54)
     Second.TextStrokeTransparency = 0
-    Second.TextXAlignment = Enum.TextXAlignment.Left
+    Second.TextXAlignment = Enum.TextXAlignment.Right
     Second.Parent = Top
-    
-    local Location = Instance.new("TextLabel")
-    Location.Name = "Location"
-    Location.Size = UDim2.new(1, -200, 1, 0)
-    Location.Position = UDim2.new(0, 90, 0, 0)
-    Location.BackgroundTransparency = 1
-    Location.Font = Enum.Font.SourceSansBold
-    Location.TextSize = 18
-    Location.Text = "LocalPlayer"
-    Location.TextColor3 = Color3.fromRGB(150, 5, 44)
-    Location.TextStrokeTransparency = 0
-    Location.Parent = Top
     
     local Exit = Instance.new("TextButton")
     Exit.Name = "Exit"
-    Exit.Size = UDim2.new(0, 16, 0, 16)
-    Exit.Position = UDim2.new(1, -18, 0, 2)
-    Exit.BackgroundColor3 = Color3.fromRGB(150, 5, 44)
+    Exit.Size = UDim2.new(0, 25, 0, 25)
+    Exit.Position = UDim2.new(1, -26, 0.5, -12.5)
+    Exit.BackgroundColor3 = Color3.fromRGB(184, 7, 54)
     Exit.BorderSizePixel = 0
     Exit.Font = Enum.Font.SourceSansBold
     Exit.TextSize = 14
@@ -1692,8 +1680,8 @@ local function CreateTopk3kGui()
     -- Main Container
     local MainContainer = Instance.new("ScrollingFrame")
     MainContainer.Name = "MainContainer"
-    MainContainer.Size = UDim2.new(1, -20, 1, -42)
-    MainContainer.Position = UDim2.new(0, 10, 0, 35)
+    MainContainer.Size = UDim2.new(1, -20, 1, -60)
+    MainContainer.Position = UDim2.new(0, 10, 0, 50)
     MainContainer.BackgroundColor3 = Color3.fromRGB(7, 11, 15)
     MainContainer.BackgroundTransparency = 0.5
     MainContainer.BorderColor3 = Color3.fromRGB(62, 62, 62)
@@ -1702,102 +1690,145 @@ local function CreateTopk3kGui()
     MainContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
     MainContainer.Parent = Topk3kBase
     
-    local function MakeTopkekButton(sz, txt, func, ysz, cbgd)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(sz, -4, 0, ysz or 20)
-        btn.BackgroundColor3 = cbgd or Color3.fromRGB(15, 23, 30)
-        btn.BorderColor3 = Color3.fromRGB(27, 42, 53)
-        btn.Font = Enum.Font.SourceSans
-        btn.TextSize = 14
-        btn.Text = txt
-        btn.TextColor3 = Color3.fromRGB(199, 199, 199)
-        btn.TextStrokeTransparency = 0.5
-        btn.Parent = MainContainer
+    -- Layout for main container
+    local MainLayout = Instance.new("UIListLayout")
+    MainLayout.Padding = UDim.new(0, 8)
+    MainLayout.Parent = MainContainer
+    
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingLeft = UDim.new(0, 8)
+    Padding.PaddingRight = UDim.new(0, 8)
+    Padding.PaddingTop = UDim.new(0, 8)
+    Padding.PaddingBottom = UDim.new(0, 8)
+    Padding.Parent = MainContainer
+    
+    -- Helper functions for Topk3k UI
+    local function MakeTopk3kLabel(text)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 24)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.SourceSansBold
+        label.TextSize = 16
+        label.Text = text
+        label.TextColor3 = Color3.fromRGB(184, 7, 54)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = MainContainer
+        return label
+    end
+    
+    local function MakeTopk3kRowContainer()
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, 0, 0, 32)
+        container.BackgroundTransparency = 1
+        container.Parent = MainContainer
         
-        btn.MouseButton1Click:Connect(func)
-        return btn
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.Padding = UDim.new(0, 8)
+        layout.Parent = container
+        
+        return container
     end
     
-    local function MakeTopkekTextBox(sz, txt, ysz, cbgd)
-        local tb = Instance.new("TextBox")
-        tb.Size = UDim2.new(sz, -4, 0, ysz or 20)
-        tb.BackgroundColor3 = cbgd or Color3.fromRGB(5, 8, 11)
-        tb.BorderColor3 = Color3.fromRGB(27, 42, 53)
-        tb.Font = Enum.Font.SourceSans
-        tb.TextSize = 14
-        tb.Text = txt
-        tb.TextColor3 = Color3.fromRGB(199, 199, 199)
-        tb.ClearTextOnFocus = false
-        tb.Parent = MainContainer
-        return tb
+    local function MakeTopk3kTextBox(widthPercent, placeholder)
+        local textbox = Instance.new("TextBox")
+        textbox.Size = UDim2.new(widthPercent, -4, 0, 28)
+        textbox.BackgroundColor3 = Color3.fromRGB(5, 8, 11)
+        textbox.BorderColor3 = Color3.fromRGB(27, 42, 53)
+        textbox.Font = Enum.Font.SourceSans
+        textbox.TextSize = 14
+        textbox.Text = placeholder
+        textbox.PlaceholderText = placeholder
+        textbox.TextColor3 = Color3.fromRGB(199, 199, 199)
+        textbox.ClearTextOnFocus = false
+        return textbox
     end
     
-    local function MakeTopkekLabel(txt)
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, -8, 0, 20)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.SourceSansBold
-        lbl.TextSize = 16
-        lbl.Text = txt
-        lbl.TextColor3 = Color3.fromRGB(198, 6, 44)
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = MainContainer
-        return lbl
+    local function MakeTopk3kButton(widthPercent, text, callback)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(widthPercent, -4, 0, 28)
+        button.BackgroundColor3 = Color3.fromRGB(15, 23, 30)
+        button.BorderColor3 = Color3.fromRGB(27, 42, 53)
+        button.Font = Enum.Font.SourceSans
+        button.TextSize = 14
+        button.Text = text
+        button.TextColor3 = Color3.fromRGB(199, 199, 199)
+        button.TextStrokeTransparency = 0.5
+        
+        button.MouseButton1Click:Connect(callback)
+        return button
     end
     
-    local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.Padding = UDim.new(0, 3)
-    UIListLayout.Parent = MainContainer
+    -- Movement Section (FIXED - Aligned horizontally)
+    MakeTopk3kLabel("[ Movement ]")
     
-    -- Movement Section
-    MakeTopkekLabel("[ Movement ]")
-    
-    local wsInput = MakeTopkekTextBox(1/3, "16")
-    MakeTopkekButton(2/3, "Set WalkSpeed", function()
+    -- WalkSpeed Row
+    local wsRow = MakeTopk3kRowContainer()
+    local wsInput = MakeTopk3kTextBox(0.25, "16")
+    wsInput.Parent = wsRow
+    local wsButton = MakeTopk3kButton(0.75, "Set WalkSpeed", function()
         local val = tonumber(wsInput.Text)
         if val and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = val
         end
     end)
+    wsButton.Parent = wsRow
     
-    local jpInput = MakeTopkekTextBox(1/3, "50")
-    MakeTopkekButton(2/3, "Set JumpPower", function()
+    -- JumpPower Row
+    local jpRow = MakeTopk3kRowContainer()
+    local jpInput = MakeTopk3kTextBox(0.25, "50")
+    jpInput.Parent = jpRow
+    local jpButton = MakeTopk3kButton(0.75, "Set JumpPower", function()
         local val = tonumber(jpInput.Text)
         if val and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.JumpPower = val
         end
     end)
+    jpButton.Parent = jpRow
     
-    local hipHeightInput = MakeTopkekTextBox(1/3, "0")
-    MakeTopkekButton(2/3, "Set HipHeight", function()
-        local val = tonumber(hipHeightInput.Text)
+    -- HipHeight Row
+    local hhRow = MakeTopk3kRowContainer()
+    local hhInput = MakeTopk3kTextBox(0.25, "0")
+    hhInput.Parent = hhRow
+    local hhButton = MakeTopk3kButton(0.75, "Set HipHeight", function()
+        local val = tonumber(hhInput.Text)
         if val and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.HipHeight = val
         end
     end)
+    hhButton.Parent = hhRow
     
-    MakeTopkekButton(1/3, "Sit", function()
+    -- Quick Actions Row
+    local quickRow = MakeTopk3kRowContainer()
+    local sitButton = MakeTopk3kButton(0.33, "Sit", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.Sit = true
         end
     end)
+    sitButton.Parent = quickRow
     
-    MakeTopkekButton(1/3, "Jump", function()
+    local jumpButton = MakeTopk3kButton(0.33, "Jump", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.Jump = true
         end
     end)
+    jumpButton.Parent = quickRow
     
-    MakeTopkekButton(1/3, "Platform Stand", function()
+    local platformButton = MakeTopk3kButton(0.33, "Platform Stand", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.PlatformStand = not LocalPlayer.Character.Humanoid.PlatformStand
         end
     end)
+    platformButton.Parent = quickRow
     
     -- Character Visual Section
-    MakeTopkekLabel("[ Character Visual ]")
+    MakeTopk3kLabel("[ Character Visual ]")
     
-    MakeTopkekButton(1/2, "Invisible", function()
+    -- Visibility Row
+    local visRow = MakeTopk3kRowContainer()
+    local invisButton = MakeTopk3kButton(0.5, "Invisible", function()
         if LocalPlayer.Character then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") or part:IsA("MeshPart") then
@@ -1809,8 +1840,9 @@ local function CreateTopk3kGui()
             end
         end
     end)
+    invisButton.Parent = visRow
     
-    MakeTopkekButton(1/2, "Visible", function()
+    local visButton = MakeTopk3kButton(0.5, "Visible", function()
         if LocalPlayer.Character then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -1824,39 +1856,38 @@ local function CreateTopk3kGui()
             end
         end
     end)
+    visButton.Parent = visRow
     
-    MakeTopkekButton(1/3, "Bighead", function()
+    -- Head Size Row
+    local headRow = MakeTopk3kRowContainer()
+    local bigHeadButton = MakeTopk3kButton(0.33, "Big Head", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head:FindFirstChild("Mesh") then
             LocalPlayer.Character.Head.Mesh.Scale = Vector3.new(5, 5, 5)
         end
     end)
+    bigHeadButton.Parent = headRow
     
-    MakeTopkekButton(1/3, "Normal Head", function()
+    local normalHeadButton = MakeTopk3kButton(0.33, "Normal Head", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head:FindFirstChild("Mesh") then
             LocalPlayer.Character.Head.Mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
         end
     end)
+    normalHeadButton.Parent = headRow
     
-    MakeTopkekButton(1/3, "Tiny Head", function()
+    local tinyHeadButton = MakeTopk3kButton(0.33, "Tiny Head", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head:FindFirstChild("Mesh") then
             LocalPlayer.Character.Head.Mesh.Scale = Vector3.new(0.5, 0.5, 0.5)
         end
     end)
+    tinyHeadButton.Parent = headRow
     
-    local reflectInput = MakeTopkekTextBox(1/3, "1")
-    MakeTopkekButton(2/3, "Set Reflectance", function()
-        local val = tonumber(reflectInput.Text)
-        if val and LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") or part:IsA("MeshPart") then
-                    part.Reflectance = val
-                end
-            end
-        end
-    end)
+    -- Color and Material Row
+    MakeTopk3kLabel("[ Color & Material ]")
     
-    local colorInput = MakeTopkekTextBox(1/3, "Bright red")
-    MakeTopkekButton(2/3, "Set Color", function()
+    local colorRow = MakeTopk3kRowContainer()
+    local colorInput = MakeTopk3kTextBox(0.25, "Bright red")
+    colorInput.Parent = colorRow
+    local colorButton = MakeTopk3kButton(0.75, "Set Color", function()
         if LocalPlayer.Character then
             local color = BrickColor.new(colorInput.Text)
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
@@ -1866,9 +1897,12 @@ local function CreateTopk3kGui()
             end
         end
     end)
+    colorButton.Parent = colorRow
     
-    local matInput = MakeTopkekTextBox(1/3, "Neon")
-    MakeTopkekButton(2/3, "Set Material", function()
+    local matRow = MakeTopk3kRowContainer()
+    local matInput = MakeTopk3kTextBox(0.25, "Neon")
+    matInput.Parent = matRow
+    local matButton = MakeTopk3kButton(0.75, "Set Material", function()
         if LocalPlayer.Character then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") or part:IsA("MeshPart") then
@@ -1879,52 +1913,53 @@ local function CreateTopk3kGui()
             end
         end
     end)
+    matButton.Parent = matRow
     
     -- Effects Section
-    MakeTopkekLabel("[ Effects ]")
+    MakeTopk3kLabel("[ Effects ]")
     
-    MakeTopkekButton(1/3, "Fire", function()
+    local effectsRow1 = MakeTopk3kRowContainer()
+    local fireButton = MakeTopk3kButton(0.33, "Fire", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             Instance.new("Fire", LocalPlayer.Character.HumanoidRootPart)
         end
     end)
+    fireButton.Parent = effectsRow1
     
-    MakeTopkekButton(1/3, "Sparkles", function()
+    local sparklesButton = MakeTopk3kButton(0.33, "Sparkles", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             Instance.new("Sparkles", LocalPlayer.Character.HumanoidRootPart)
         end
     end)
+    sparklesButton.Parent = effectsRow1
     
-    MakeTopkekButton(1/3, "Smoke", function()
+    local smokeButton = MakeTopk3kButton(0.33, "Smoke", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             Instance.new("Smoke", LocalPlayer.Character.HumanoidRootPart)
         end
     end)
+    smokeButton.Parent = effectsRow1
     
-    MakeTopkekButton(1/3, "PointLight", function()
+    local effectsRow2 = MakeTopk3kRowContainer()
+    local lightButton = MakeTopk3kButton(0.33, "PointLight", function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local light = Instance.new("PointLight", LocalPlayer.Character.HumanoidRootPart)
             light.Brightness = 5
             light.Range = 20
         end
     end)
+    lightButton.Parent = effectsRow2
     
-    MakeTopkekButton(1/3, "Particles", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local particle = Instance.new("ParticleEmitter", LocalPlayer.Character.HumanoidRootPart)
-            particle.Texture = "rbxasset://textures/particles/smoke_main.dds"
-        end
-    end)
-    
-    MakeTopkekButton(1/3, "Highlight", function()
+    local highlightButton = MakeTopk3kButton(0.33, "Highlight", function()
         if LocalPlayer.Character then
             local highlight = Instance.new("Highlight", LocalPlayer.Character)
             highlight.FillColor = Color3.fromRGB(255, 0, 0)
             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
         end
     end)
+    highlightButton.Parent = effectsRow2
     
-    MakeTopkekButton(1/2, "Remove Effects", function()
+    local removeEffectsButton = MakeTopk3kButton(0.33, "Remove Effects", function()
         if LocalPlayer.Character then
             for _, obj in pairs(LocalPlayer.Character:GetDescendants()) do
                 if obj:IsA("Fire") or obj:IsA("Sparkles") or obj:IsA("Smoke") or obj:IsA("PointLight") or obj:IsA("ParticleEmitter") or obj:IsA("Highlight") then
@@ -1933,253 +1968,29 @@ local function CreateTopk3kGui()
             end
         end
     end)
-    
-    MakeTopkekButton(1/2, "ForceField", function()
-        if LocalPlayer.Character then
-            Instance.new("ForceField", LocalPlayer.Character)
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "Selection Box", function()
-        if LocalPlayer.Character then
-            local sel = Instance.new("SelectionBox", LocalPlayer.Character)
-            sel.Adornee = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            sel.Color3 = Color3.fromRGB(255, 0, 0)
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "Selection Sphere", function()
-        if LocalPlayer.Character then
-            local sel = Instance.new("SelectionSphere", LocalPlayer.Character)
-            sel.Adornee = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            sel.Color3 = Color3.fromRGB(0, 255, 0)
-        end
-    end)
-    
-    -- Camera Section
-    MakeTopkekLabel("[ Camera ]")
-    
-    local fovInput = MakeTopkekTextBox(1/3, "70")
-    MakeTopkekButton(2/3, "Set FOV", function()
-        local val = tonumber(fovInput.Text)
-        if val then
-            workspace.CurrentCamera.FieldOfView = val
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "First Person", function()
-        LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
-    end)
-    
-    MakeTopkekButton(1/2, "Third Person", function()
-        LocalPlayer.CameraMode = Enum.CameraMode.Classic
-    end)
-    
-    local camDistInput = MakeTopkekTextBox(1/3, "12.5")
-    MakeTopkekButton(2/3, "Set Cam Distance", function()
-        local val = tonumber(camDistInput.Text)
-        if val then
-            LocalPlayer.CameraMaxZoomDistance = val
-            LocalPlayer.CameraMinZoomDistance = val
-        end
-    end)
-    
-    MakeTopkekButton(1, "Reset Camera", function()
-        workspace.CurrentCamera:Destroy()
-        wait(0.1)
-        workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-        workspace.CurrentCamera.CameraType = "Custom"
-        LocalPlayer.CameraMode = Enum.CameraMode.Classic
-    end)
-    
-    -- Appearance Section
-    MakeTopkekLabel("[ Appearance ]")
-    
-    local nameInput = MakeTopkekTextBox(1/2, "Name")
-    MakeTopkekButton(1/2, "Set Overhead Name", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
-            for _, v in pairs(LocalPlayer.Character:GetChildren()) do
-                if v:IsA("Model") and v.Name == "NameTag" then
-                    v:Destroy()
-                end
-            end
-            
-            local newName = Instance.new("Model", LocalPlayer.Character)
-            newName.Name = "NameTag"
-            local cl = LocalPlayer.Character.Head:Clone()
-            cl.Parent = newName
-            if cl:FindFirstChild("face") then
-                cl.face:Destroy()
-            end
-            local hum = Instance.new("Humanoid", newName)
-            hum.Name = "NameTag"
-            hum.MaxHealth = 0
-            hum.Health = 0
-            local weld = Instance.new("Weld", cl)
-            weld.Part0 = cl
-            weld.Part1 = LocalPlayer.Character.Head
-            LocalPlayer.Character.Head.Transparency = 1
-            wait(0.5)
-            cl.BrickColor = LocalPlayer.Character.Head.BrickColor
-            
-            local bb = Instance.new("BillboardGui", cl)
-            bb.AlwaysOnTop = true
-            bb.Size = UDim2.new(0, 100, 0, 50)
-            bb.StudsOffset = Vector3.new(0, 1, 0)
-            local tl = Instance.new("TextLabel", bb)
-            tl.BackgroundTransparency = 1
-            tl.Size = UDim2.new(1, 0, 1, 0)
-            tl.Text = nameInput.Text
-            tl.Font = Enum.Font.SourceSansBold
-            tl.TextSize = 24
-            tl.TextColor3 = Color3.new(1, 1, 1)
-            tl.TextStrokeTransparency = 0
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "Rainbow Name", function()
-        LocalPlayer.Neutral = false
-        spawn(function()
-            while LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") do
-                LocalPlayer.TeamColor = BrickColor.Random()
-                wait(0.1)
-            end
-        end)
-    end)
-    
-    MakeTopkekButton(1/2, "Clear Appearance", function()
-        LocalPlayer:ClearCharacterAppearance()
-    end)
-    
-    MakeTopkekButton(1/2, "Remove Hats", function()
-        if LocalPlayer.Character then
-            for _, obj in pairs(LocalPlayer.Character:GetChildren()) do
-                if obj:IsA("Accessory") or obj:IsA("Hat") then
-                    obj:Destroy()
-                end
-            end
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "Remove Face", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
-            for _, obj in pairs(LocalPlayer.Character.Head:GetChildren()) do
-                if obj:IsA("Decal") then
-                    obj:Destroy()
-                end
-            end
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "Block Head", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
-            for _, obj in pairs(LocalPlayer.Character.Head:GetChildren()) do
-                if obj:IsA("SpecialMesh") then
-                    obj:Destroy()
-                end
-            end
-        end
-    end)
-    
-    -- Animation Section
-    MakeTopkekLabel("[ Animations ]")
-    
-    local animInput = MakeTopkekTextBox(1/2, "Animation ID")
-    MakeTopkekButton(1/2, "Play Animation", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            local anim = Instance.new("Animation")
-            anim.AnimationId = "rbxassetid://" .. animInput.Text
-            local track = LocalPlayer.Character.Humanoid:LoadAnimation(anim)
-            track:Play()
-        end
-    end)
-    
-    MakeTopkekButton(1/3, "Stop Anims", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            for _, track in pairs(LocalPlayer.Character.Humanoid:GetPlayingAnimationTracks()) do
-                track:Stop()
-            end
-        end
-    end)
-    
-    MakeTopkekButton(1/3, "Freeze Anims", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            for _, track in pairs(LocalPlayer.Character.Humanoid:GetPlayingAnimationTracks()) do
-                track:AdjustSpeed(0)
-            end
-        end
-    end)
-    
-    MakeTopkekButton(1/3, "Resume Anims", function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            for _, track in pairs(LocalPlayer.Character.Humanoid:GetPlayingAnimationTracks()) do
-                track:AdjustSpeed(1)
-            end
-        end
-    end)
-    
-    -- Audio Section
-    MakeTopkekLabel("[ Audio ]")
-    
-    local soundInput = MakeTopkekTextBox(1/3, "Sound ID")
-    MakeTopkekButton(2/3, "Play Sound (Local)", function()
-        local sound = Instance.new("Sound", workspace.CurrentCamera)
-        sound.SoundId = "rbxassetid://" .. soundInput.Text
-        sound.Volume = 1
-        sound:Play()
-        sound.Ended:Connect(function()
-            sound:Destroy()
-        end)
-    end)
-    
-    local volInput = MakeTopkekTextBox(1/3, "1")
-    MakeTopkekButton(2/3, "Set Volume", function()
-        local val = tonumber(volInput.Text)
-        if val then
-            for _, sound in pairs(workspace:GetDescendants()) do
-                if sound:IsA("Sound") then
-                    sound.Volume = val
-                end
-            end
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "Stop All Sounds", function()
-        for _, sound in pairs(workspace:GetDescendants()) do
-            if sound:IsA("Sound") then
-                sound:Stop()
-            end
-        end
-    end)
-    
-    MakeTopkekButton(1/2, "Remove Sounds", function()
-        for _, sound in pairs(workspace:GetDescendants()) do
-            if sound:IsA("Sound") then
-                sound:Destroy()
-            end
-        end
-    end)
+    removeEffectsButton.Parent = effectsRow2
     
     -- Utility Section
-    MakeTopkekLabel("[ Utility ]")
+    MakeTopk3kLabel("[ Utility ]")
     
-    MakeTopkekButton(1/2, "Rejoin Server", function()
+    local utilRow1 = MakeTopk3kRowContainer()
+    local rejoinButton = MakeTopk3kButton(0.5, "Rejoin Server", function()
         game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
     end)
+    rejoinButton.Parent = utilRow1
     
-    MakeTopkekButton(1/2, "Copy JobId", function()
+    local copyJobButton = MakeTopk3kButton(0.5, "Copy JobId", function()
         setclipboard(game.JobId)
     end)
+    copyJobButton.Parent = utilRow1
     
-    MakeTopkekButton(1/2, "Copy PlaceId", function()
-        setclipboard(tostring(game.PlaceId))
-    end)
-    
-    MakeTopkekButton(1/2, "Copy User ID", function()
+    local utilRow2 = MakeTopk3kRowContainer()
+    local copyUserIdButton = MakeTopk3kButton(0.5, "Copy User ID", function()
         setclipboard(tostring(LocalPlayer.UserId))
     end)
+    copyUserIdButton.Parent = utilRow2
     
-    MakeTopkekButton(1/2, "Remove Tools", function()
+    local removeToolsButton = MakeTopk3kButton(0.5, "Remove Tools", function()
         if LocalPlayer.Backpack then
             for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
                 tool:Destroy()
@@ -2193,24 +2004,21 @@ local function CreateTopk3kGui()
             end
         end
     end)
+    removeToolsButton.Parent = utilRow2
     
-    MakeTopkekButton(1/2, "Unequip Tools", function()
-        if LocalPlayer.Character then
-            for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
-                if tool:IsA("Tool") then
-                    tool.Parent = LocalPlayer.Backpack
-                end
-            end
-        end
-    end)
+    -- Chat Section
+    MakeTopk3kLabel("[ Chat ]")
     
-    local chatInput = MakeTopkekTextBox(1/2, "Message")
-    MakeTopkekButton(1/2, "Chat", function()
+    local chatRow = MakeTopk3kRowContainer()
+    local chatInput = MakeTopk3kTextBox(0.5, "Message")
+    chatInput.Parent = chatRow
+    local chatButton = MakeTopk3kButton(0.5, "Chat", function()
         game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(chatInput.Text, "All")
     end)
+    chatButton.Parent = chatRow
 end
 
-topkekButton.MouseButton1Click:Connect(function()
+topk3kButton.MouseButton1Click:Connect(function()
     CreateTopk3kGui()
     Topk3kVisible = not Topk3kVisible
     Topk3kBase.Visible = Topk3kVisible
