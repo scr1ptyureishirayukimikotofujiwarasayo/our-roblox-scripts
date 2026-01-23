@@ -1751,9 +1751,29 @@ local scriptStartPos
 local ScriptBackups = {}
 local ManagedScripts = {}
 
-----------------------------------------------------------------
+-- LocalScript Manager (Floating Window, Compact Rows)
+local scriptManagerGui
+local scriptList
+local scriptDragging = false
+local scriptDragStart
+local scriptStartPos
+
+local ScriptBackups = {}
+local ManagedScripts = {}
+
+-- Define color constants
+local COLOR_BG_DARK = Color3.fromRGB(30, 30, 30)
+local COLOR_PRIMARY = Color3.fromRGB(0, 120, 215)
+local COLOR_TEXT = Color3.fromRGB(255, 255, 255)
+local COLOR_BG = Color3.fromRGB(45, 45, 45)
+local COLOR_BUTTON = Color3.fromRGB(60, 60, 60)
+
+-- Get required services
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
 -- Create LocalScript Manager GUI
-----------------------------------------------------------------
 local function CreateScriptManagerGui()
 	scriptManagerGui = Instance.new("Frame")
 	scriptManagerGui.Name = "LocalScriptManager"
@@ -1763,7 +1783,7 @@ local function CreateScriptManagerGui()
 	scriptManagerGui.BorderSizePixel = 0
 	scriptManagerGui.Active = true
 	scriptManagerGui.Visible = false
-	scriptManagerGui.Parent = screenGui
+	scriptManagerGui.Parent = game:GetService("CoreGui") -- Use CoreGui instead of screenGui
 
 	-- Title bar
 	local title = Instance.new("TextLabel")
@@ -1802,11 +1822,12 @@ local function CreateScriptManagerGui()
 			scriptDragging = true
 			scriptDragStart = input.Position
 			scriptStartPos = scriptManagerGui.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					scriptDragging = false
-				end
-			end)
+		end
+	end)
+
+	title.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			scriptDragging = false
 		end
 	end)
 
@@ -1825,9 +1846,7 @@ end
 
 CreateScriptManagerGui()
 
-----------------------------------------------------------------
 -- Add Script Row (Compact Layout)
-----------------------------------------------------------------
 local function AddScriptRow(scr)
 	if ManagedScripts[scr] then return end
 	ManagedScripts[scr] = true
@@ -1905,13 +1924,11 @@ local function AddScriptRow(scr)
 	end)
 end
 
-----------------------------------------------------------------
 -- Live Script Scanner
-----------------------------------------------------------------
 local function ScanScripts()
 	for _, obj in ipairs(game:GetDescendants()) do
 		if obj:IsA("LocalScript") then
-			if not obj:IsDescendantOf(screenGui) then
+			if not obj:IsDescendantOf(scriptManagerGui) then
 				AddScriptRow(obj)
 			end
 		end
@@ -1925,11 +1942,21 @@ task.spawn(function()
 	end
 end)
 
-----------------------------------------------------------------
 -- Button in Main Menu
-----------------------------------------------------------------
+local function MakeButton(text)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0, 150, 0, 30)
+	button.BackgroundColor3 = COLOR_BUTTON
+	button.Text = text
+	button.TextColor3 = COLOR_TEXT
+	button.Font = Enum.Font.Gotham
+	button.TextSize = 12
+	button.Parent = game:GetService("CoreGui") -- Ensure button is in CoreGui
+	return button
+end
+
 local scriptManagerBtn = MakeButton("LocalScript Manager")
-scriptManagerBtn.Parent = content
+scriptManagerBtn.Parent = game:GetService("CoreGui")
 
 scriptManagerBtn.MouseButton1Click:Connect(function()
 	scriptManagerGui.Visible = not scriptManagerGui.Visible
