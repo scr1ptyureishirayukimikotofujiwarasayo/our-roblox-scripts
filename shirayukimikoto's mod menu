@@ -1,33 +1,36 @@
+-- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
+-- Configuration
 local WINDOW_NAME = "shirayukimikoto's mod menu"
 local WINDOW_TITLE = "shirayukimikoto's mod menu"
-
 local COLOR_PRIMARY = Color3.fromRGB(0, 85, 170)
 local COLOR_BUTTON = Color3.fromRGB(0, 120, 215)
 local COLOR_BG_DARK = Color3.fromRGB(30, 30, 60)
 local COLOR_TEXT = Color3.new(1, 1, 1)
 
+-- Helper Functions
 local function safeParent(gui)
-	local ok = pcall(function()
-		gui.Parent = CoreGui
-	end)
-	if not ok or not gui.Parent then
-		local pg = LocalPlayer:WaitForChild("PlayerGui")
-		gui.Parent = pg
-	end
+    local ok = pcall(function()
+        gui.Parent = CoreGui
+    end)
+    if not ok or not gui.Parent then
+        local pg = LocalPlayer:WaitForChild("PlayerGui")
+        gui.Parent = pg
+    end
 end
 
 local nextOrder = 1
 local function assignOrder(obj)
-	obj.LayoutOrder = nextOrder
-	nextOrder += 1
+    obj.LayoutOrder = nextOrder
+    nextOrder = nextOrder + 1
 end
 
+-- Create Main GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = WINDOW_NAME
 screenGui.ResetOnSpawn = false
@@ -44,6 +47,7 @@ mainFrame.Active = true
 mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
+-- Title Bar
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "TitleLabel"
 titleLabel.Size = UDim2.new(1, -56, 0, 36)
@@ -57,6 +61,7 @@ titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 assignOrder(titleLabel)
 titleLabel.Parent = mainFrame
 
+-- Minimize Button
 local minimizeButton = Instance.new("TextButton")
 minimizeButton.Name = "MinimizeButton"
 minimizeButton.Size = UDim2.new(0, 40, 0, 28)
@@ -70,51 +75,56 @@ minimizeButton.Text = "—"
 assignOrder(minimizeButton)
 minimizeButton.Parent = mainFrame
 
+-- Minimize Functionality
 local minimized = false
-local savedFrameState = { Size = mainFrame.Size, Position = mainFrame.Position }
+local savedFrameState = {
+    Size = mainFrame.Size,
+    Position = mainFrame.Position
+}
 
 minimizeButton.MouseButton1Click:Connect(function()
-	minimized = not minimized
-	if minimized then
-		savedFrameState.Size = mainFrame.Size
-		savedFrameState.Position = mainFrame.Position
-		mainFrame:TweenSize(UDim2.new(0, 340, 0, 52), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
-	else
-		mainFrame:TweenSize(savedFrameState.Size, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
-	end
+    minimized = not minimized
+    if minimized then
+        savedFrameState.Size = mainFrame.Size
+        savedFrameState.Position = mainFrame.Position
+        mainFrame:TweenSize(UDim2.new(0, 340, 0, 52), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+    else
+        mainFrame:TweenSize(savedFrameState.Size, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+    end
 end)
 
-do
-	local dragging = false
-	local dragStart
-	local startPos
+-- Dragging Functionality
+local dragging = false
+local dragStart
+local startPos
 
-	mainFrame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = true
-			dragStart = input.Position
-			startPos = mainFrame.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
-		end
-	end)
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+    end
+end)
 
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - dragStart
-			mainFrame.Position = UDim2.new(
-				startPos.X.Scale,
-				startPos.X.Offset + delta.X,
-				startPos.Y.Scale,
-				startPos.Y.Offset + delta.Y
-			)
-		end
-	end)
-end
+mainFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
 
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Content ScrollingFrame
 local content = Instance.new("ScrollingFrame")
 content.Name = "Content"
 content.Size = UDim2.new(1, -16, 1, -60)
@@ -133,249 +143,243 @@ listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = content
 
-listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 12)
-end)
-
+-- UI Element Creators
 local function MakeButton(text)
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, 0, 0, 32)
-	btn.BackgroundColor3 = COLOR_BUTTON
-	btn.TextColor3 = COLOR_TEXT
-	btn.BorderSizePixel = 0
-	btn.Text = text
-	btn.Font = Enum.Font.Gotham
-	btn.TextSize = 14
-	assignOrder(btn)
-	return btn
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.BackgroundColor3 = COLOR_BUTTON
+    btn.TextColor3 = COLOR_TEXT
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    assignOrder(btn)
+    return btn
 end
 
 local function MakeTextBox(text)
-	local tb = Instance.new("TextBox")
-	tb.Size = UDim2.new(1, 0, 0, 32)
-	tb.BackgroundColor3 = COLOR_BUTTON
-	tb.TextColor3 = COLOR_TEXT
-	tb.BorderSizePixel = 0
-	tb.Text = text
-	tb.ClearTextOnFocus = false
-	tb.Font = Enum.Font.Gotham
-	tb.TextSize = 14
-	assignOrder(tb)
-	return tb
+    local tb = Instance.new("TextBox")
+    tb.Size = UDim2.new(1, 0, 0, 32)
+    tb.BackgroundColor3 = COLOR_BUTTON
+    tb.TextColor3 = COLOR_TEXT
+    tb.BorderSizePixel = 0
+    tb.Text = text
+    tb.ClearTextOnFocus = false
+    tb.Font = Enum.Font.Gotham
+    tb.TextSize = 14
+    assignOrder(tb)
+    return tb
 end
 
 local function MakeLabel(text)
-	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, 0, 0, 24)
-	lbl.BackgroundTransparency = 1
-	lbl.TextColor3 = COLOR_TEXT
-	lbl.Font = Enum.Font.GothamSemibold
-	lbl.TextSize = 14
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.Text = text
-	assignOrder(lbl)
-	return lbl
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 24)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = COLOR_TEXT
+    lbl.Font = Enum.Font.GothamSemibold
+    lbl.TextSize = 14
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Text = text
+    assignOrder(lbl)
+    return lbl
 end
 
 local function MakeToggle(parent, label, callback)
-	local btn = MakeButton(label .. " OFF")
-	btn.Parent = parent
-
-	local state = false
-
-	local function updateText()
-		btn.Text = label .. (state and " ON" or " OFF")
-	end
-
-	btn.MouseButton1Click:Connect(function()
-		state = not state
-		updateText()
-		callback(state, btn)
-	end)
-
-	local function get()
-		return state
-	end
-
-	local function set(v)
-		if state == v then return end
-		state = v
-		updateText()
-		callback(state, btn)
-	end
-
-	updateText()
-	return btn, get, set
+    local btn = MakeButton(label .. " OFF")
+    btn.Parent = parent
+    local state = false
+    
+    local function updateText()
+        btn.Text = label .. (state and " ON" or " OFF")
+    end
+    
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        updateText()
+        callback(state, btn)
+    end)
+    
+    local function get()
+        return state
+    end
+    
+    local function set(v)
+        if state == v then return end
+        state = v
+        updateText()
+        callback(state, btn)
+    end
+    
+    updateText()
+    return btn, get, set
 end
 
-----------------------------------------------------------------
--- Movement section
-----------------------------------------------------------------
-
+-- ===== MOVEMENT FEATURES =====
 local movementLabel = MakeLabel("Movement")
 movementLabel.Parent = content
 
+-- Fly Feature
 local flyConn
 local flyGyro
 local flyVel
 local flySpeed = 50
 
 local function ReinitFly()
-	local char = LocalPlayer.Character
-	if not char then return end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		hrp = char:WaitForChild("HumanoidRootPart", 5)
-		if not hrp then return end
-	end
-
-	flyGyro = Instance.new("BodyGyro")
-	flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-	flyGyro.P = 9e4
-	flyGyro.CFrame = hrp.CFrame
-	flyGyro.Parent = hrp
-
-	flyVel = Instance.new("BodyVelocity")
-	flyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-	flyVel.Velocity = Vector3.new(0, 0, 0)
-	flyVel.Parent = hrp
-
-	if flyConn then
-		flyConn:Disconnect()
-	end
-
-	flyConn = RunService.RenderStepped:Connect(function()
-		if not flyGyro or not flyVel or not hrp or not hrp.Parent then return end
-		local cam = workspace.CurrentCamera
-		if not cam then return end
-
-		local cf = cam.CFrame
-		flyGyro.CFrame = cf
-
-		local dir = Vector3.new(0, 0, 0)
-		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-			dir += cf.LookVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-			dir -= cf.LookVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-			dir -= cf.RightVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-			dir += cf.RightVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-			dir += cf.UpVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-			dir -= cf.UpVector
-		end
-		if dir.Magnitude > 0 then
-			flyVel.Velocity = dir.Unit * flySpeed
-		else
-			flyVel.Velocity = Vector3.new(0, 0, 0)
-		end
-	end)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        hrp = char:WaitForChild("HumanoidRootPart", 5)
+        if not hrp then return end
+    end
+    
+    flyGyro = Instance.new("BodyGyro")
+    flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyGyro.P = 9e4
+    flyGyro.CFrame = hrp.CFrame
+    flyGyro.Parent = hrp
+    
+    flyVel = Instance.new("BodyVelocity")
+    flyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyVel.Velocity = Vector3.new(0, 0, 0)
+    flyVel.Parent = hrp
+    
+    if flyConn then
+        flyConn:Disconnect()
+    end
+    
+    flyConn = RunService.RenderStepped:Connect(function()
+        if not flyGyro or not flyVel or not hrp or not hrp.Parent then
+            return
+        end
+        
+        local cam = workspace.CurrentCamera
+        if not cam then return end
+        
+        local cf = cam.CFrame
+        flyGyro.CFrame = cf
+        
+        local dir = Vector3.new(0, 0, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            dir = dir + cf.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            dir = dir - cf.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            dir = dir - cf.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            dir = dir + cf.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            dir = dir + cf.UpVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+            dir = dir - cf.UpVector
+        end
+        
+        if dir.Magnitude > 0 then
+            flyVel.Velocity = dir.Unit * flySpeed
+        else
+            flyVel.Velocity = Vector3.new(0, 0, 0)
+        end
+    end)
 end
 
-local flyToggleBtn
-local getFlyState
-local setFlyState
-
-flyToggleBtn, getFlyState, setFlyState = MakeToggle(content, "Fly", function(on)
-	if on then
-		ReinitFly()
-	else
-		if flyConn then
-			flyConn:Disconnect()
-			flyConn = nil
-		end
-		if flyGyro then
-			flyGyro:Destroy()
-			flyGyro = nil
-		end
-		if flyVel then
-			flyVel:Destroy()
-			flyVel = nil
-		end
-	end
+local flyToggleBtn, getFlyState, setFlyState = MakeToggle(content, "Fly", function(on)
+    if on then
+        ReinitFly()
+    else
+        if flyConn then
+            flyConn:Disconnect()
+            flyConn = nil
+        end
+        if flyGyro then
+            flyGyro:Destroy()
+            flyGyro = nil
+        end
+        if flyVel then
+            flyVel:Destroy()
+            flyVel = nil
+        end
+    end
 end)
 
+-- Noclip Feature
 local noclipConn
-local noclipToggleBtn
-local getNoclipState
-local setNoclipState
-
-noclipToggleBtn, getNoclipState, setNoclipState = MakeToggle(content, "Noclip", function(on)
-	if noclipConn then
-		noclipConn:Disconnect()
-		noclipConn = nil
-	end
-	if on then
-		noclipConn = RunService.Stepped:Connect(function()
-			local char = LocalPlayer.Character
-			if not char then return end
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
-		end)
-	end
+local noclipToggleBtn, getNoclipState, setNoclipState = MakeToggle(content, "Noclip", function(on)
+    if noclipConn then
+        noclipConn:Disconnect()
+        noclipConn = nil
+    end
+    
+    if on then
+        noclipConn = RunService.Stepped:Connect(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end)
+    end
 end)
 
+-- Infinite Jump Feature
 local infJumpConn
-local infJumpToggleBtn
-local getInfJumpState
-local setInfJumpState
-
-infJumpToggleBtn, getInfJumpState, setInfJumpState = MakeToggle(content, "InfiniteJump", function(on)
-	if infJumpConn then
-		infJumpConn:Disconnect()
-		infJumpConn = nil
-	end
-	if on then
-		infJumpConn = UserInputService.JumpRequest:Connect(function()
-			local char = LocalPlayer.Character
-			if not char then return end
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum then
-				hum:ChangeState(Enum.HumanoidStateType.Jumping)
-			end
-		end)
-	end
+local infJumpToggleBtn, getInfJumpState, setInfJumpState = MakeToggle(content, "InfiniteJump", function(on)
+    if infJumpConn then
+        infJumpConn:Disconnect()
+        infJumpConn = nil
+    end
+    
+    if on then
+        infJumpConn = UserInputService.JumpRequest:Connect(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    end
 end)
 
+-- Anti-Teleport Feature
 local antiTpConn
 local lastPos
-local antiTpToggleBtn
-local getAntiTpState
-local setAntiTpState
-
-antiTpToggleBtn, getAntiTpState, setAntiTpState = MakeToggle(content, "AntiTeleport", function(on)
-	if antiTpConn then
-		antiTpConn:Disconnect()
-		antiTpConn = nil
-	end
-	if on then
-		lastPos = nil
-		antiTpConn = RunService.Heartbeat:Connect(function()
-			local char = LocalPlayer.Character
-			if not char then return end
-			local hrp = char:FindFirstChild("HumanoidRootPart")
-			if not hrp then return end
-			if lastPos then
-				local delta = hrp.Position - lastPos
-				if delta.Magnitude > 50 then
-					hrp.CFrame = CFrame.new(lastPos)
-				end
-			end
-			lastPos = hrp.Position
-		end)
-	end
+local antiTpToggleBtn, getAntiTpState, setAntiTpState = MakeToggle(content, "AntiTeleport", function(on)
+    if antiTpConn then
+        antiTpConn:Disconnect()
+        antiTpConn = nil
+    end
+    
+    if on then
+        lastPos = nil
+        antiTpConn = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            
+            if lastPos then
+                local delta = hrp.Position - lastPos
+                if delta.Magnitude > 50 then
+                    hrp.CFrame = CFrame.new(lastPos)
+                end
+            end
+            lastPos = hrp.Position
+        end)
+    end
 end)
 
+-- WalkSpeed Feature
 local loopWsLabel = MakeLabel("Loop WalkSpeed")
 loopWsLabel.Parent = content
 
@@ -384,97 +388,100 @@ local targetWalkSpeed = 16
 local loopWsConn
 local originalWalkSpeed
 
-local wsBox = MakeTextBox("WalkSpeed (studs/sec): " .. targetWalkSpeed)
+local wsBox = MakeTextBox("WalkSpeed: 16")
 wsBox.Parent = content
 
 wsBox.FocusLost:Connect(function()
-	local val = tonumber(wsBox.Text)
-	if val and val > 0 then
-		targetWalkSpeed = val
-		wsBox.Text = "WalkSpeed (studs/sec): " .. targetWalkSpeed
-	else
-		wsBox.Text = "Invalid WalkSpeed"
-	end
+    local val = tonumber(wsBox.Text:match("%d+"))
+    if val and val > 0 then
+        targetWalkSpeed = val
+        wsBox.Text = "WalkSpeed: " .. targetWalkSpeed
+    else
+        wsBox.Text = "WalkSpeed: " .. targetWalkSpeed
+    end
 end)
 
-local loopWsToggleBtn
-local getLoopWsState
-local setLoopWsState
-
-loopWsToggleBtn, getLoopWsState, setLoopWsState = MakeToggle(content, "LoopWalkSpeed", function(on)
-	loopWsEnabled = on
-	if loopWsConn then
-		loopWsConn:Disconnect()
-		loopWsConn = nil
-	end
-
-	local function apply()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			if on and originalWalkSpeed == nil then
-				originalWalkSpeed = hum.WalkSpeed
-			end
-			if on then
-				hum.WalkSpeed = targetWalkSpeed
-			else
-				if originalWalkSpeed ~= nil then
-					hum.WalkSpeed = originalWalkSpeed
-				else
-					hum.WalkSpeed = 16
-				end
-			end
-		end
-	end
-
-	if on then
-		apply()
-		loopWsConn = RunService.Heartbeat:Connect(apply)
-	else
-		local char = LocalPlayer.Character
-		if char then
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum and originalWalkSpeed ~= nil then
-				hum.WalkSpeed = originalWalkSpeed
-			end
-		end
-		originalWalkSpeed = nil
-	end
+local loopWsToggleBtn, getLoopWsState, setLoopWsState = MakeToggle(content, "LoopWalkSpeed", function(on)
+    loopWsEnabled = on
+    
+    if loopWsConn then
+        loopWsConn:Disconnect()
+        loopWsConn = nil
+    end
+    
+    local function apply()
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            if on and originalWalkSpeed == nil then
+                originalWalkSpeed = hum.WalkSpeed
+            end
+            
+            if on then
+                hum.WalkSpeed = targetWalkSpeed
+            else
+                if originalWalkSpeed ~= nil then
+                    hum.WalkSpeed = originalWalkSpeed
+                else
+                    hum.WalkSpeed = 16
+                end
+            end
+        end
+    end
+    
+    if on then
+        apply()
+        loopWsConn = RunService.Heartbeat:Connect(apply)
+    else
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum and originalWalkSpeed ~= nil then
+                hum.WalkSpeed = originalWalkSpeed
+            end
+        end
+        originalWalkSpeed = nil
+    end
 end)
 
-----------------------------------------------------------------
--- BTools
-----------------------------------------------------------------
-
+-- ===== BTOOLS =====
 local btoolsLabel = MakeLabel("BTools")
 btoolsLabel.Parent = content
 
 local undoStack = {}
 
 local function pushUndo(entry)
-	table.insert(undoStack, entry)
+    table.insert(undoStack, entry)
 end
 
 local function popUndo()
-	local entry = table.remove(undoStack)
-	if not entry then return end
-	if entry.action == "delete" then
-		if entry.part and entry.parent and entry.part:IsDescendantOf(workspace) == false then
-			entry.part.Parent = entry.parent
-			if entry.part:IsA("BasePart") and entry.canCollide ~= nil then
-				entry.part.CanCollide = entry.canCollide
-			end
-		end
-	elseif entry.action == "clone" then
-		if entry.clone and entry.clone.Parent then
-			entry.clone:Destroy()
-		end
-	elseif entry.action == "move" then
-		if entry.part and entry.prevCFrame then
-			entry.part.CFrame = entry.prevCFrame
-		end
-	end
+    local entry = table.remove(undoStack)
+    if not entry then return end
+    
+    if entry.action == "delete" then
+        if entry.part and entry.parent then
+            pcall(function()
+                entry.part.Parent = entry.parent
+                if entry.part:IsA("BasePart") and entry.canCollide ~= nil then
+                    entry.part.CanCollide = entry.canCollide
+                end
+            end)
+        end
+    elseif entry.action == "clone" then
+        if entry.clone and entry.clone.Parent then
+            pcall(function()
+                entry.clone:Destroy()
+            end)
+        end
+    elseif entry.action == "move" then
+        if entry.part and entry.prevCFrame then
+            pcall(function()
+                entry.part.CFrame = entry.prevCFrame
+            end)
+        end
+    end
 end
 
 local giveBToolsBtn = MakeButton("Give BTools (Delete, Clone, Undo, Move)")
@@ -483,132 +490,149 @@ giveBToolsBtn.Parent = content
 local btoolsInitialized = {}
 
 giveBToolsBtn.MouseButton1Click:Connect(function()
-	local backpack = LocalPlayer:WaitForChild("Backpack")
-
-	local function makeTool(name)
-		for _, t in ipairs(backpack:GetChildren()) do
-			if t:IsA("Tool") and t.Name == name then
-				t:Destroy()
-			end
-		end
-		local tool = Instance.new("Tool")
-		tool.Name = name
-		tool.RequiresHandle = false
-		tool.Parent = backpack
-		return tool
-	end
-
-	local deleteTool = makeTool("Delete")
-	local cloneTool = makeTool("Clone")
-	local undoTool = makeTool("Undo")
-	local moveTool = makeTool("Move")
-
-	if not btoolsInitialized["Delete"] then
-		btoolsInitialized["Delete"] = true
-		deleteTool.Activated:Connect(function()
-			local mouse = LocalPlayer:GetMouse()
-			local target = mouse.Target
-			if target and target:IsA("BasePart") and target.Parent ~= workspace.Terrain then
-				pushUndo({
-					action = "delete",
-					part = target,
-					parent = target.Parent,
-					canCollide = target.CanCollide
-				})
-				target.Parent = nil
-			end
-		end)
-	end
-
-	if not btoolsInitialized["Clone"] then
-		btoolsInitialized["Clone"] = true
-		cloneTool.Activated:Connect(function()
-			local mouse = LocalPlayer:GetMouse()
-			local target = mouse.Target
-			if target and target:IsA("BasePart") then
-				local clone = target:Clone()
-				local parent = target.Parent
-				if parent then
-					clone.Parent = parent
-				else
-					clone.Parent = workspace
-				end
-				if clone:IsA("BasePart") then
-					clone.CFrame = clone.CFrame + Vector3.new(2, 0, 2)
-				end
-				pushUndo({ action = "clone", clone = clone })
-			end
-		end)
-	end
-
-	if not btoolsInitialized["Undo"] then
-		btoolsInitialized["Undo"] = true
-		undoTool.Activated:Connect(function()
-			popUndo()
-		end)
-	end
-
-	if not btoolsInitialized["Move"] then
-		btoolsInitialized["Move"] = true
-		moveTool.Equipped:Connect(function()
-			local mouse = LocalPlayer:GetMouse()
-			local selectedPart
-			local prevCFrame
-			local moveConn
-			local downConn
-			local upConn
-
-			downConn = mouse.Button1Down:Connect(function()
-				local target = mouse.Target
-				if target and target:IsA("BasePart") and target.Parent ~= workspace.Terrain then
-					selectedPart = target
-					prevCFrame = selectedPart.CFrame
-					pushUndo({ action = "move", part = selectedPart, prevCFrame = prevCFrame })
-					selectedPart.CanCollide = false
-
-					moveConn = RunService.RenderStepped:Connect(function()
-						if selectedPart and selectedPart.Parent then
-							local hit = mouse.Hit
-							if hit then
-								local pos = hit.Position + Vector3.new(0, selectedPart.Size.Y / 2, 0)
-								selectedPart.CFrame = CFrame.new(pos)
-							end
-						end
-					end)
-				end
-			end)
-
-			upConn = mouse.Button1Up:Connect(function()
-				if moveConn then
-					moveConn:Disconnect()
-					moveConn = nil
-				end
-				if selectedPart then
-					selectedPart.CanCollide = true
-					selectedPart = nil
-				end
-			end)
-
-			moveTool.Unequipped:Connect(function()
-				if moveConn then
-					moveConn:Disconnect()
-					moveConn = nil
-				end
-				if downConn then
-					downConn:Disconnect()
-					downConn = nil
-				end
-				if upConn then
-					upConn:Disconnect()
-					upConn = nil
-				end
-				if selectedPart then
-					selectedPart.CanCollide = true
-					selectedPart = nil
-				end
-			end)
-		end)
-	end
+    local backpack = LocalPlayer:WaitForChild("Backpack")
+    
+    local function makeTool(name)
+        for _, t in ipairs(backpack:GetChildren()) do
+            if t:IsA("Tool") and t.Name == name then
+                t:Destroy()
+            end
+        end
+        
+        local tool = Instance.new("Tool")
+        tool.Name = name
+        tool.RequiresHandle = false
+        tool.Parent = backpack
+        return tool
+    end
+    
+    local deleteTool = makeTool("Delete")
+    local cloneTool = makeTool("Clone")
+    local undoTool = makeTool("Undo")
+    local moveTool = makeTool("Move")
+    
+    if not btoolsInitialized["Delete"] then
+        btoolsInitialized["Delete"] = true
+        deleteTool.Activated:Connect(function()
+            local mouse = LocalPlayer:GetMouse()
+            local target = mouse.Target
+            if target and target:IsA("BasePart") and target.Parent ~= workspace.Terrain then
+                pushUndo({
+                    action = "delete",
+                    part = target,
+                    parent = target.Parent,
+                    canCollide = target.CanCollide
+                })
+                target.Parent = nil
+            end
+        end)
+    end
+    
+    if not btoolsInitialized["Clone"] then
+        btoolsInitialized["Clone"] = true
+        cloneTool.Activated:Connect(function()
+            local mouse = LocalPlayer:GetMouse()
+            local target = mouse.Target
+            if target and target:IsA("BasePart") then
+                local ok, clone = pcall(function()
+                    return target:Clone()
+                end)
+                
+                if ok and clone then
+                    local parent = target.Parent
+                    if parent then
+                        clone.Parent = parent
+                    else
+                        clone.Parent = workspace
+                    end
+                    
+                    if clone:IsA("BasePart") then
+                        clone.CFrame = clone.CFrame + Vector3.new(2, 0, 2)
+                    end
+                    
+                    pushUndo({
+                        action = "clone",
+                        clone = clone
+                    })
+                end
+            end
+        end)
+    end
+    
+    if not btoolsInitialized["Undo"] then
+        btoolsInitialized["Undo"] = true
+        undoTool.Activated:Connect(function()
+            popUndo()
+        end)
+    end
+    
+    if not btoolsInitialized["Move"] then
+        btoolsInitialized["Move"] = true
+        
+        local moveConn
+        local downConn
+        local upConn
+        local selectedPart
+        local prevCFrame
+        
+        moveTool.Equipped:Connect(function()
+            local mouse = LocalPlayer:GetMouse()
+            
+            downConn = mouse.Button1Down:Connect(function()
+                local target = mouse.Target
+                if target and target:IsA("BasePart") and target.Parent ~= workspace.Terrain then
+                    selectedPart = target
+                    prevCFrame = selectedPart.CFrame
+                    pushUndo({
+                        action = "move",
+                        part = selectedPart,
+                        prevCFrame = prevCFrame
+                    })
+                    selectedPart.CanCollide = false
+                    
+                    moveConn = RunService.RenderStepped:Connect(function()
+                        if selectedPart and selectedPart.Parent then
+                            local hit = mouse.Hit
+                            if hit then
+                                local pos = hit.Position + Vector3.new(0, selectedPart.Size.Y / 2, 0)
+                                selectedPart.CFrame = CFrame.new(pos)
+                            end
+                        end
+                    end)
+                end
+            end)
+            
+            upConn = mouse.Button1Up:Connect(function()
+                if moveConn then
+                    moveConn:Disconnect()
+                    moveConn = nil
+                end
+                if selectedPart then
+                    selectedPart.CanCollide = true
+                    selectedPart = nil
+                end
+            end)
+        end)
+        
+        moveTool.Unequipped:Connect(function()
+            if moveConn then
+                moveConn:Disconnect()
+                moveConn = nil
+            end
+            if downConn then
+                downConn:Disconnect()
+                downConn = nil
+            end
+            if upConn then
+                upConn:Disconnect()
+                upConn = nil
+            end
+            if selectedPart then
+                selectedPart.CanCollide = true
+                selectedPart = nil
+            end
+        end)
+    end
 end)
 
 local localDeleteBtn = MakeButton("Enable local Delete Tool")
@@ -617,243 +641,215 @@ localDeleteBtn.Parent = content
 local localDeleteConn
 
 localDeleteBtn.MouseButton1Click:Connect(function()
-	if localDeleteConn then
-		localDeleteConn:Disconnect()
-		localDeleteConn = nil
-		localDeleteBtn.Text = "Enable local Delete Tool"
-		return
-	end
-
-	localDeleteBtn.Text = "Disable local Delete Tool"
-	localDeleteConn = UserInputService.InputBegan:Connect(function(input, gp)
-		if gp then return end
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			local mouse = LocalPlayer:GetMouse()
-			local target = mouse.Target
-			if target and target:IsA("BasePart") and target.Parent ~= workspace.Terrain then
-				pushUndo({
-					action = "delete",
-					part = target,
-					parent = target.Parent,
-					canCollide = target.CanCollide
-				})
-				target.Parent = nil
-			end
-		end
-	end)
+    if localDeleteConn then
+        localDeleteConn:Disconnect()
+        localDeleteConn = nil
+        localDeleteBtn.Text = "Enable local Delete Tool"
+        return
+    end
+    
+    localDeleteBtn.Text = "Disable local Delete Tool"
+    localDeleteConn = UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mouse = LocalPlayer:GetMouse()
+            local target = mouse.Target
+            if target and target:IsA("BasePart") and target.Parent ~= workspace.Terrain then
+                pushUndo({
+                    action = "delete",
+                    part = target,
+                    parent = target.Parent,
+                    canCollide = target.CanCollide
+                })
+                target.Parent = nil
+            end
+        end
+    end)
 end)
 
 local undoLastBtn = MakeButton("Undo last delete")
 undoLastBtn.Parent = content
 
 undoLastBtn.MouseButton1Click:Connect(function()
-	popUndo()
+    popUndo()
 end)
 
-----------------------------------------------------------------
--- Player Tracer
-----------------------------------------------------------------
-
+-- ===== PLAYER TRACER =====
 local tracerLabel = MakeLabel("Player Tracer")
 tracerLabel.Parent = content
 
 local tracerState = {
-	players = {},
-	playerAddedConn = nil,
-	playerRemovingConn = nil
+    players = {},
+    playerAddedConn = nil,
+    playerRemovingConn = nil
 }
 
 local function getTeamColor(plr)
-	if plr.Team and plr.TeamColor then
-		return plr.TeamColor.Color
-	end
-	return Color3.new(1, 1, 1)
+    if plr.Team and plr.TeamColor then
+        return plr.TeamColor.Color
+    end
+    return Color3.new(1, 1, 1)
 end
 
 local function clearTracerForPlayer(plr)
-	local data = tracerState.players[plr]
-	if not data then return end
-	if data.conn then
-		data.conn:Disconnect()
-		data.conn = nil
-	end
-	if data.charConn then
-		data.charConn:Disconnect()
-		data.charConn = nil
-	end
-	if data.gui and data.gui.Parent then
-		data.gui:Destroy()
-		data.gui = nil
-	end
-	tracerState.players[plr] = nil
+    local data = tracerState.players[plr]
+    if not data then return end
+    
+    if data.conn then
+        data.conn:Disconnect()
+        data.conn = nil
+    end
+    
+    if data.charConn then
+        data.charConn:Disconnect()
+        data.charConn = nil
+    end
+    
+    if data.gui and data.gui.Parent then
+        data.gui:Destroy()
+        data.gui = nil
+    end
+    
+    tracerState.players[plr] = nil
 end
 
 local function createTracerGui(plr, char)
-	if not char then return end
-
-	-- Clear existing tracer first to prevent memory leaks
-	if tracerState.players[plr] then
-		if tracerState.players[plr].conn then
-			tracerState.players[plr].conn:Disconnect()
-		end
-		if tracerState.players[plr].gui then
-			tracerState.players[plr].gui:Destroy()
-		end
-	end
-
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		hrp = char:FindFirstChild("Torso")
-	end
-	if not hrp then
-		hrp = char:FindFirstChild("UpperTorso")
-	end
-	if not hrp then return end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "PlayerTracerGui"
-	billboard.Adornee = hrp
-	billboard.Size = UDim2.new(0, 200, 0, 40)
-	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-	billboard.AlwaysOnTop = true
-	billboard.LightInfluence = 0
-	billboard.Parent = hrp
-
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 1, 0)
-	frame.BackgroundTransparency = 0.35
-	frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	frame.BorderSizePixel = 0
-	frame.Parent = billboard
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -8, 1, -8)
-	label.Position = UDim2.new(0, 4, 0, 4)
-	label.BackgroundTransparency = 1
-	label.TextColor3 = getTeamColor(plr)
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 14
-	label.TextStrokeTransparency = 0.6
-	label.Text = plr.Name
-	label.TextXAlignment = Enum.TextXAlignment.Center
-	label.Parent = billboard
-
-	local conn
-	conn = RunService.Heartbeat:Connect(function()
-		local myChar = LocalPlayer.Character
-		if not myChar or not myChar.Parent then
-			label.Text = plr.Name .. " - respawning"
-			return
-		end
-		local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-		if not myRoot then
-			myRoot = myChar:FindFirstChild("Torso")
-		end
-		if not myRoot then
-			myRoot = myChar:FindFirstChild("UpperTorso")
-		end
-		if not myRoot or not hrp or not hrp.Parent then
-			label.Text = plr.Name .. " - unknown"
-			return
-		end
-		local dist = (hrp.Position - myRoot.Position).Magnitude
-		label.Text = plr.Name .. " - " .. math.floor(dist) .. " studs"
-		label.TextColor3 = getTeamColor(plr)
-	end)
-
-	local data = tracerState.players[plr] or {}
-	data.gui = billboard
-	data.conn = conn
-	tracerState.players[plr] = data
+    if not char then return end
+    
+    if tracerState.players[plr] then
+        if tracerState.players[plr].conn then
+            tracerState.players[plr].conn:Disconnect()
+        end
+        if tracerState.players[plr].gui then
+            tracerState.players[plr].gui:Destroy()
+        end
+    end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+    if not hrp then return end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PlayerTracerGui"
+    billboard.Adornee = hrp
+    billboard.Size = UDim2.new(0, 200, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.LightInfluence = 0
+    billboard.Parent = hrp
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundTransparency = 0.35
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BorderSizePixel = 0
+    frame.Parent = billboard
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -8, 1, -8)
+    label.Position = UDim2.new(0, 4, 0, 4)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = getTeamColor(plr)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextStrokeTransparency = 0.6
+    label.Text = plr.Name
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.Parent = billboard
+    
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not plr or not plr.Parent then
+            conn:Disconnect()
+            return
+        end
+        
+        local myChar = LocalPlayer.Character
+        if not myChar or not myChar.Parent then
+            label.Text = plr.Name .. " - respawning"
+            return
+        end
+        
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart") or myChar:FindFirstChild("Torso") or myChar:FindFirstChild("UpperTorso")
+        if not myRoot or not hrp or not hrp.Parent then
+            label.Text = plr.Name .. " - unknown"
+            return
+        end
+        
+        local dist = (hrp.Position - myRoot.Position).Magnitude
+        label.Text = plr.Name .. " - " .. math.floor(dist) .. " studs"
+        label.TextColor3 = getTeamColor(plr)
+    end)
+    
+    local data = tracerState.players[plr] or {}
+    data.gui = billboard
+    data.conn = conn
+    tracerState.players[plr] = data
 end
 
 local function setupTracerForPlayer(plr)
-	if plr == LocalPlayer then return end
-	if tracerState.players[plr] and tracerState.players[plr].gui then return end
-
-	if plr.Character and plr.Character.Parent then
-		createTracerGui(plr, plr.Character)
-	end
-
-	local charConn = plr.CharacterAdded:Connect(function(char)
-		char:WaitForChild("HumanoidRootPart", 5)
-		createTracerGui(plr, char)
-	end)
-
-	local data = tracerState.players[plr] or {}
-	data.charConn = charConn
-	tracerState.players[plr] = data
+    if plr == LocalPlayer then return end
+    
+    if tracerState.players[plr] and tracerState.players[plr].gui then
+        return
+    end
+    
+    if plr.Character and plr.Character.Parent then
+        createTracerGui(plr, plr.Character)
+    end
+    
+    local charConn = plr.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        createTracerGui(plr, char)
+    end)
+    
+    local data = tracerState.players[plr] or {}
+    data.charConn = charConn
+    tracerState.players[plr] = data
 end
 
 local tracerEnabled = false
 
 MakeToggle(content, "Player Tracer", function(on)
-	tracerEnabled = on
-
-	if tracerState.playerAddedConn then
-		tracerState.playerAddedConn:Disconnect()
-		tracerState.playerAddedConn = nil
-	end
-	if tracerState.playerRemovingConn then
-		tracerState.playerRemovingConn:Disconnect()
-		tracerState.playerRemovingConn = nil
-	end
-
-	if on then
-		for _, plr in ipairs(Players:GetPlayers()) do
-			if plr ~= LocalPlayer then
-				setupTracerForPlayer(plr)
-			end
-		end
-
-		tracerState.playerAddedConn = Players.PlayerAdded:Connect(function(plr)
-			if tracerEnabled and plr ~= LocalPlayer then
-				setupTracerForPlayer(plr)
-			end
-		end)
-
-		tracerState.playerRemovingConn = Players.PlayerRemoving:Connect(function(plr)
-			clearTracerForPlayer(plr)
-		end)
-	else
-		for plr, _ in pairs(tracerState.players) do
-			clearTracerForPlayer(plr)
-		end
-	end
+    tracerEnabled = on
+    
+    if tracerState.playerAddedConn then
+        tracerState.playerAddedConn:Disconnect()
+        tracerState.playerAddedConn = nil
+    end
+    
+    if tracerState.playerRemovingConn then
+        tracerState.playerRemovingConn:Disconnect()
+        tracerState.playerRemovingConn = nil
+    end
+    
+    if on then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                setupTracerForPlayer(plr)
+            end
+        end
+        
+        tracerState.playerAddedConn = Players.PlayerAdded:Connect(function(plr)
+            if tracerEnabled and plr ~= LocalPlayer then
+                setupTracerForPlayer(plr)
+            end
+        end)
+        
+        tracerState.playerRemovingConn = Players.PlayerRemoving:Connect(function(plr)
+            clearTracerForPlayer(plr)
+        end)
+    else
+        for plr, _ in pairs(tracerState.players) do
+            clearTracerForPlayer(plr)
+        end
+    end
 end)
 
-Players.PlayerRemoving:Connect(function(plr)
-	clearTracerForPlayer(plr)
-end)
-
-LocalPlayer.CharacterRemoving:Connect(function()
-	for plr, _ in pairs(tracerState.players) do
-		clearTracerForPlayer(plr)
-	end
-end)
-
--- FIX: Recreate tracers when LocalPlayer respawns
-LocalPlayer.CharacterAdded:Connect(function(char)
-	if not tracerEnabled then return end
-	
-	-- Wait for character to fully load
-	char:WaitForChild("HumanoidRootPart", 5)
-	
-	-- Recreate tracers for all players
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer then
-			setupTracerForPlayer(plr)
-		end
-	end
-end)
-----------------------------------------------------------------
--- Emote
-----------------------------------------------------------------
-
+-- ===== EMOTE SYSTEM =====
 local emoteLabel = MakeLabel("Emote")
 emoteLabel.Parent = content
 
-local emoteInput = MakeTextBox("Enter emote animation id (e.g. 123456789)")
+local emoteInput = MakeTextBox("Enter emote animation id")
 emoteInput.Parent = content
 
 local emoteButtonsFrame = Instance.new("Frame")
@@ -882,21 +878,12 @@ stopEmoteBtn.TextSize = 14
 stopEmoteBtn.Text = "Stop Emote"
 stopEmoteBtn.Parent = emoteButtonsFrame
 
-local savedEmoteLabel = Instance.new("TextLabel")
-savedEmoteLabel.Size = UDim2.new(1, 0, 0, 20)
-savedEmoteLabel.BackgroundTransparency = 1
-savedEmoteLabel.TextColor3 = COLOR_TEXT
-savedEmoteLabel.Font = Enum.Font.GothamSemibold
-savedEmoteLabel.TextSize = 12
-savedEmoteLabel.TextXAlignment = Enum.TextXAlignment.Left
-savedEmoteLabel.Text = "Saved Emote"
-assignOrder(savedEmoteLabel)
+local savedEmoteLabel = MakeLabel("Saved Emote")
 savedEmoteLabel.Parent = content
 
 local savedEmoteBox = MakeTextBox("")
 savedEmoteBox.Parent = content
 
--- NEW: Status label for feedback
 local emoteStatusLabel = Instance.new("TextLabel")
 emoteStatusLabel.Size = UDim2.new(1, 0, 0, 20)
 emoteStatusLabel.BackgroundTransparency = 1
@@ -938,109 +925,101 @@ local currentEmoteTrack = nil
 local currentEmoteAnim = nil
 
 local function stopEmote()
-	if currentEmoteTrack then
-		pcall(function()
-			currentEmoteTrack:Stop()
-		end)
-		currentEmoteTrack = nil
-	end
-	if currentEmoteAnim then
-		pcall(function()
-			currentEmoteAnim:Destroy()
-		end)
-		currentEmoteAnim = nil
-	end
-	emoteStatusLabel.Text = "⛔ Emote stopped"
+    if currentEmoteTrack then
+        pcall(function()
+            currentEmoteTrack:Stop()
+        end)
+        currentEmoteTrack = nil
+    end
+    if currentEmoteAnim then
+        pcall(function()
+            currentEmoteAnim:Destroy()
+        end)
+        currentEmoteAnim = nil
+    end
+    emoteStatusLabel.Text = "⛔ Emote stopped"
 end
 
 local function playEmote(idStr)
-	if not idStr then
-		emoteStatusLabel.Text = "❌ No ID entered"
-		return
-	end
-
-	local idNum = tonumber(idStr)
-	if not idNum then
-		emoteStatusLabel.Text = "❌ Invalid ID format"
-		return
-	end
-
-	local char = LocalPlayer.Character
-	if not char then
-		emoteStatusLabel.Text = "❌ No character found"
-		return
-	end
-
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum then
-		emoteStatusLabel.Text = "❌ No humanoid found"
-		return
-	end
-
-	stopEmote()
-
-	local anim = Instance.new("Animation")
-	anim.Name = "EmoteAnim"
-	anim.AnimationId = "rbxassetid://" .. tostring(idNum)
-	anim.Parent = char
-	currentEmoteAnim = anim
-
-	local ok, track = pcall(function()
-		return hum:LoadAnimation(anim)
-	end)
-
-	if ok and track then
-		currentEmoteTrack = track
-		track.Priority = Enum.AnimationPriority.Action
-		track:Play()
-		emoteStatusLabel.Text = "✅ Emote playing"
-	else
-		emoteStatusLabel.Text = "❌ Failed to load animation"
-		if anim and anim.Parent then
-			anim:Destroy()
-		end
-		currentEmoteAnim = nil
-		currentEmoteTrack = nil
-	end
+    if not idStr or idStr == "" then
+        emoteStatusLabel.Text = "❌ No ID entered"
+        return
+    end
+    
+    local idNum = tonumber(idStr)
+    if not idNum then
+        emoteStatusLabel.Text = "❌ Invalid ID format"
+        return
+    end
+    
+    local char = LocalPlayer.Character
+    if not char then
+        emoteStatusLabel.Text = "❌ No character found"
+        return
+    end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then
+        emoteStatusLabel.Text = "❌ No humanoid found"
+        return
+    end
+    
+    stopEmote()
+    
+    local anim = Instance.new("Animation")
+    anim.Name = "EmoteAnim"
+    anim.AnimationId = "rbxassetid://" .. tostring(idNum)
+    anim.Parent = char
+    currentEmoteAnim = anim
+    
+    local ok, track = pcall(function()
+        return hum:LoadAnimation(anim)
+    end)
+    
+    if ok and track then
+        currentEmoteTrack = track
+        track.Priority = Enum.AnimationPriority.Action
+        track:Play()
+        emoteStatusLabel.Text = "✅ Emote playing"
+    else
+        emoteStatusLabel.Text = "❌ Failed to load animation"
+        if anim and anim.Parent then
+            anim:Destroy()
+        end
+        currentEmoteAnim = nil
+        currentEmoteTrack = nil
+    end
 end
 
 startEmoteBtn.MouseButton1Click:Connect(function()
-	local id = emoteInput.Text:match("%d+")
-	if id and id ~= "" then
-		playEmote(id)
-	else
-		emoteStatusLabel.Text = "❌ Enter a valid ID"
-	end
+    local id = emoteInput.Text:match("%d+")
+    if id and id ~= "" then
+        playEmote(id)
+    else
+        emoteStatusLabel.Text = "❌ Enter a valid ID"
+    end
 end)
 
 stopEmoteBtn.MouseButton1Click:Connect(function()
-	stopEmote()
+    stopEmote()
 end)
 
 saveEmoteBtn.MouseButton1Click:Connect(function()
-	local id = emoteInput.Text:match("%d+")
-	if id and id ~= "" then
-		savedEmoteBox.Text = id
-		emoteStatusLabel.Text = "💾 Emote saved"
-	else
-		emoteStatusLabel.Text = "❌ Invalid ID"
-	end
+    local id = emoteInput.Text:match("%d+")
+    if id and id ~= "" then
+        savedEmoteBox.Text = id
+        emoteStatusLabel.Text = "💾 Emote saved"
+    else
+        emoteStatusLabel.Text = "❌ Invalid ID"
+    end
 end)
 
 removeSavedBtn.MouseButton1Click:Connect(function()
-	savedEmoteBox.Text = ""
-	emoteStatusLabel.Text = "🗑️ Saved emote removed"
+    savedEmoteBox.Text = ""
+    emoteStatusLabel.Text = "🗑️ Saved emote removed"
 end)
 
-LocalPlayer.CharacterRemoving:Connect(function()
-	stopEmote()
-end)
-
-
-----------------------------------------------------------------
--- Side Dodge
-----------------------------------------------------------------
-
+-- ===== SIDE DODGE =====
 local sideDodgeLabel = MakeLabel("Side Dodge (Q/E)")
 sideDodgeLabel.Parent = content
 
@@ -1050,83 +1029,77 @@ local dodgeDuration = 0.15
 local dodgeSpeed = 80
 
 MakeToggle(content, "Side Dodge", function(on)
-	sideDodgeEnabled = on
-	if sideDodgeConn then
-		sideDodgeConn:Disconnect()
-		sideDodgeConn = nil
-	end
-	if on then
-		sideDodgeConn = UserInputService.InputBegan:Connect(function(input, gp)
-			if gp then return end
-			if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-
-			local key = input.KeyCode
-			if key ~= Enum.KeyCode.Q and key ~= Enum.KeyCode.E then return end
-
-			local char = LocalPlayer.Character
-			if not char then return end
-			local hrp = char:FindFirstChild("HumanoidRootPart")
-			if not hrp then
-				hrp = char:FindFirstChild("Torso")
-			end
-			if not hrp then
-				hrp = char:FindFirstChild("UpperTorso")
-			end
-			if not hrp then return end
-
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if not hum then return end
-
-			local cam = workspace.CurrentCamera
-			local right
-			if cam then
-				right = cam.CFrame.RightVector
-			else
-				right = hrp.CFrame.RightVector
-			end
-
-			local dir
-			if key == Enum.KeyCode.E then
-				dir = right
-			else
-				dir = Vector3.new(-right.X, -right.Y, -right.Z)
-			end
-
-			dir = Vector3.new(dir.X, 0, dir.Z)
-			if dir.Magnitude == 0 then return end
-			dir = dir.Unit
-
-			local bv = Instance.new("BodyVelocity")
-			bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-			bv.Velocity = dir * dodgeSpeed
-			bv.P = 1250
-			bv.Parent = hrp
-
-			local oldWs = hum.WalkSpeed
-			if oldWs < dodgeSpeed then
-				hum.WalkSpeed = dodgeSpeed
-			end
-
-			task.delay(dodgeDuration, function()
-				if bv and bv.Parent then
-					bv:Destroy()
-				end
-				if hum and hum.Parent then
-					hum.WalkSpeed = oldWs
-				end
-			end)
-		end)
-	end
+    sideDodgeEnabled = on
+    
+    if sideDodgeConn then
+        sideDodgeConn:Disconnect()
+        sideDodgeConn = nil
+    end
+    
+    if on then
+        sideDodgeConn = UserInputService.InputBegan:Connect(function(input, gp)
+            if gp then return end
+            if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+            
+            local key = input.KeyCode
+            if key ~= Enum.KeyCode.Q and key ~= Enum.KeyCode.E then return end
+            
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+            if not hrp then return end
+            
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
+            
+            local cam = workspace.CurrentCamera
+            local right
+            if cam then
+                right = cam.CFrame.RightVector
+            else
+                right = hrp.CFrame.RightVector
+            end
+            
+            local dir
+            if key == Enum.KeyCode.E then
+                dir = right
+            else
+                dir = Vector3.new(-right.X, -right.Y, -right.Z)
+            end
+            
+            dir = Vector3.new(dir.X, 0, dir.Z)
+            if dir.Magnitude == 0 then return end
+            dir = dir.Unit
+            
+            local bv = Instance.new("BodyVelocity")
+            bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+            bv.Velocity = dir * dodgeSpeed
+            bv.P = 1250
+            bv.Parent = hrp
+            
+            local oldWs = hum.WalkSpeed
+            if oldWs < dodgeSpeed then
+                hum.WalkSpeed = dodgeSpeed
+            end
+            
+            task.delay(dodgeDuration, function()
+                if bv and bv.Parent then
+                    bv:Destroy()
+                end
+                if hum and hum.Parent then
+                    hum.WalkSpeed = oldWs
+                end
+            end)
+        end)
+    end
 end)
 
-----------------------------------------------------------------
--- Teleport to player
-----------------------------------------------------------------
-
-local tpLabel = MakeLabel("Teleport to player (partial name)")
+-- ===== PLAYER TELEPORT =====
+local tpLabel = MakeLabel("Teleport to Player")
 tpLabel.Parent = content
 
-local tpInput = MakeTextBox("Type part of username or display name")
+local tpInput = MakeTextBox("Type username")
 tpInput.Parent = content
 
 local tpButtonsFrame = Instance.new("Frame")
@@ -1152,189 +1125,103 @@ tpClosestButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
 tpClosestButton.TextColor3 = COLOR_TEXT
 tpClosestButton.Font = Enum.Font.Gotham
 tpClosestButton.TextSize = 14
-tpClosestButton.Text = "Teleport Closest Match"
+tpClosestButton.Text = "TP Closest Match"
 tpClosestButton.Parent = tpButtonsFrame
 
 local function findMatchingPlayers(partial)
-	partial = partial:lower()
-	local matches = {}
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer then
-			local uname = plr.Name:lower()
-			local dname = (plr.DisplayName or ""):lower()
-			if uname:find(partial, 1, true) or dname:find(partial, 1, true) then
-				table.insert(matches, plr)
-			end
-		end
-	end
-	return matches
+    partial = partial:lower()
+    local matches = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local uname = plr.Name:lower()
+            local dname = (plr.DisplayName or ""):lower()
+            if uname:find(partial, 1, true) or dname:find(partial, 1, true) then
+                table.insert(matches, plr)
+            end
+        end
+    end
+    return matches
 end
 
 local function teleportToPlayer(plr)
-	local char = LocalPlayer.Character
-	if not char then return end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	local targetChar = plr.Character
-	if not targetChar then return end
-	local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-	if not targetRoot then return end
-
-	hrp.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local targetChar = plr.Character
+    if not targetChar then return end
+    
+    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return end
+    
+    hrp.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
 end
 
 tpButton.MouseButton1Click:Connect(function()
-	local text = tpInput.Text
-	if not text or text == "" then return end
-	local matches = findMatchingPlayers(text)
-	if #matches >= 1 then
-		teleportToPlayer(matches[1])
-	end
+    local text = tpInput.Text
+    if not text or text == "" then return end
+    
+    local matches = findMatchingPlayers(text)
+    if #matches >= 1 then
+        teleportToPlayer(matches[1])
+    end
 end)
 
 tpClosestButton.MouseButton1Click:Connect(function()
-	local text = tpInput.Text
-	if not text or text == "" then return end
-	local matches = findMatchingPlayers(text)
-	if #matches == 0 then return end
-
-	local char = LocalPlayer.Character
-	if not char then
-		teleportToPlayer(matches[1])
-		return
-	end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		teleportToPlayer(matches[1])
-		return
-	end
-
-	local closestPlr = nil
-	local closestDist = math.huge
-
-	for _, plr in ipairs(matches) do
-		local tChar = plr.Character
-		if tChar then
-			local tRoot = tChar:FindFirstChild("HumanoidRootPart")
-			if tRoot then
-				local dist = (tRoot.Position - hrp.Position).Magnitude
-				if dist < closestDist then
-					closestDist = dist
-					closestPlr = plr
-				end
-			end
-		end
-	end
-
-	if closestPlr then
-		teleportToPlayer(closestPlr)
-	end
+    local text = tpInput.Text
+    if not text or text == "" then return end
+    
+    local matches = findMatchingPlayers(text)
+    if #matches == 0 then return end
+    
+    local char = LocalPlayer.Character
+    if not char then
+        teleportToPlayer(matches[1])
+        return
+    end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        teleportToPlayer(matches[1])
+        return
+    end
+    
+    local closestPlr = nil
+    local closestDist = math.huge
+    for _, plr in ipairs(matches) do
+        local tChar = plr.Character
+        if tChar then
+            local tRoot = tChar:FindFirstChild("HumanoidRootPart")
+            if tRoot then
+                local dist = (tRoot.Position - hrp.Position).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    closestPlr = plr
+                end
+            end
+        end
+    end
+    
+    if closestPlr then
+        teleportToPlayer(closestPlr)
+    end
 end)
 
-----------------------------------------------------------------
--- Re-apply toggles on character added
-----------------------------------------------------------------
-
-local function OnCharacterAdded(char)
-	task.wait(0.1)
-
-	if getFlyState and getFlyState() then
-		ReinitFly()
-	end
-
-	if getNoclipState and getNoclipState() then
-		if noclipConn then
-			noclipConn:Disconnect()
-			noclipConn = nil
-		end
-		noclipConn = RunService.Stepped:Connect(function()
-			local c = LocalPlayer.Character
-			if not c then return end
-			for _, part in ipairs(c:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
-		end)
-	end
-
-	if getInfJumpState and getInfJumpState() then
-		if infJumpConn then
-			infJumpConn:Disconnect()
-			infJumpConn = nil
-		end
-		infJumpConn = UserInputService.JumpRequest:Connect(function()
-			local c = LocalPlayer.Character
-			if not c then return end
-			local hum = c:FindFirstChildOfClass("Humanoid")
-			if hum then
-				hum:ChangeState(Enum.HumanoidStateType.Jumping)
-			end
-		end)
-	end
-
-	if getAntiTpState and getAntiTpState() then
-		if antiTpConn then
-			antiTpConn:Disconnect()
-			antiTpConn = nil
-		end
-		lastPos = nil
-		antiTpConn = RunService.Heartbeat:Connect(function()
-			local c = LocalPlayer.Character
-			if not c then return end
-			local hrp = c:FindFirstChild("HumanoidRootPart")
-			if not hrp then return end
-			if lastPos then
-				local delta = hrp.Position - lastPos
-				if delta.Magnitude > 50 then
-					hrp.CFrame = CFrame.new(lastPos)
-				end
-			end
-			lastPos = hrp.Position
-		end)
-	end
-
-	if getLoopWsState and getLoopWsState() then
-		originalWalkSpeed = nil
-		if loopWsConn then
-			loopWsConn:Disconnect()
-			loopWsConn = nil
-		end
-		loopWsConn = RunService.Heartbeat:Connect(function()
-			local c = LocalPlayer.Character
-			if not c then return end
-			local hum = c:FindFirstChildOfClass("Humanoid")
-			if hum then
-				if originalWalkSpeed == nil then
-					originalWalkSpeed = hum.WalkSpeed
-				end
-				hum.WalkSpeed = targetWalkSpeed
-			end
-		end)
-	end
-end
-
-LocalPlayer.CharacterAdded:Connect(OnCharacterAdded)
-if LocalPlayer.Character then
-	OnCharacterAdded(LocalPlayer.Character)
-end
-----------------------------------------------------------------
--- Client Logger (Floating Window + Filters + Clear + LocalScripts)
-----------------------------------------------------------------
+-- ===== CLIENT LOGGER =====
+local loggerLabel = MakeLabel("Client Logger")
+loggerLabel.Parent = content
 
 local loggerGui
 local loggerScroll
 local loggerDragging = false
 local loggerDragStart
 local loggerStartPos
-
 local loggerHooks = {}
 local loggerRemoteOldInvoke = {}
 local loggerOldPrint, loggerOldWarn, loggerOldError
 local loggerEnabled = false
-
--- Filter states
 local filter_prints = true
 local filter_remotes = true
 local filter_functions = true
@@ -1342,975 +1229,1090 @@ local filter_physics = true
 local filter_ui = true
 local filter_localscripts = true
 
-----------------------------------------------------------------
--- Create floating logger window
-----------------------------------------------------------------
 local function CreateLoggerGui()
-	loggerGui = Instance.new("Frame")
-	loggerGui.Name = "ClientLoggerWindow"
-	loggerGui.Size = UDim2.new(0, 460, 0, 300)
-	loggerGui.Position = UDim2.new(0, 380, 0, 100)
-	loggerGui.BackgroundColor3 = COLOR_BG_DARK
-	loggerGui.BorderSizePixel = 0
-	loggerGui.Active = true
-	loggerGui.Visible = false
-	loggerGui.Parent = screenGui
-
-	-- Title bar
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 24)
-	title.BackgroundColor3 = COLOR_PRIMARY
-	title.BorderSizePixel = 0
-	title.Text = "fujiwarasayo's clientsided event/Script Logger"
-	title.TextColor3 = COLOR_TEXT
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = loggerGui
-
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 6)
-	pad.Parent = title
-
-	-- Filter bar (horizontal)
-	local filterFrame = Instance.new("Frame")
-	filterFrame.Size = UDim2.new(1, -10, 0, 30)
-	filterFrame.Position = UDim2.new(0, 5, 0, 26)
-	filterFrame.BackgroundTransparency = 1
-	filterFrame.Parent = loggerGui
-
-	local filterLayout = Instance.new("UIListLayout")
-	filterLayout.FillDirection = Enum.FillDirection.Horizontal
-	filterLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	filterLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	filterLayout.Padding = UDim.new(0, 6)
-	filterLayout.Parent = filterFrame
-
-	local function MakeFilterToggle(text, default, callback)
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(0, 80, 0, 24)
-		btn.BackgroundColor3 = COLOR_BUTTON
-		btn.TextColor3 = COLOR_TEXT
-		btn.Font = Enum.Font.Gotham
-		btn.TextSize = 12
-		btn.BorderSizePixel = 0
-
-		local state = default
-		local function update()
-			btn.Text = text .. (state and " ON" or " OFF")
-		end
-		update()
-
-		btn.MouseButton1Click:Connect(function()
-			state = not state
-			update()
-			callback(state)
-		end)
-
-		btn.Parent = filterFrame
-		return btn
-	end
-
-	-- Filters (horizontal)
-	MakeFilterToggle("Prints", true, function(v) filter_prints = v end)
-	MakeFilterToggle("Remotes", true, function(v) filter_remotes = v end)
-	MakeFilterToggle("Funcs", true, function(v) filter_functions = v end)
-	MakeFilterToggle("Physics", true, function(v) filter_physics = v end)
-	MakeFilterToggle("UI", true, function(v) filter_ui = v end)
-	MakeFilterToggle("Scripts", true, function(v) filter_localscripts = v end)
-
-	-- Clear button
-	local clearBtn = Instance.new("TextButton")
-	clearBtn.Size = UDim2.new(0, 80, 0, 24)
-	clearBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-	clearBtn.TextColor3 = COLOR_TEXT
-	clearBtn.Font = Enum.Font.GothamBold
-	clearBtn.TextSize = 12
-	clearBtn.Text = "CLEAR"
-	clearBtn.BorderSizePixel = 0
-	clearBtn.Parent = filterFrame
-
-	clearBtn.MouseButton1Click:Connect(function()
-		if loggerScroll then
-			for _, child in ipairs(loggerScroll:GetChildren()) do
-				if child:IsA("TextLabel") then
-					child:Destroy()
-				end
-			end
-		end
-	end)
-
-	-- Log area
-	loggerScroll = Instance.new("ScrollingFrame")
-	loggerScroll.Size = UDim2.new(1, -10, 1, -96)
-	loggerScroll.Position = UDim2.new(0, 5, 0, 60)
-	loggerScroll.BackgroundTransparency = 1
-	loggerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-	loggerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	loggerScroll.ScrollBarThickness = 6
-	loggerScroll.Parent = loggerGui
-
-	local layout = Instance.new("UIListLayout")
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 2)
-	layout.Parent = loggerScroll
-
-	-- Dragging
-	title.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			loggerDragging = true
-			loggerDragStart = input.Position
-			loggerStartPos = loggerGui.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					loggerDragging = false
-				end
-			end)
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input)
-		if loggerDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - loggerDragStart
-			loggerGui.Position = UDim2.new(
-				loggerStartPos.X.Scale,
-				loggerStartPos.X.Offset + delta.X,
-				loggerStartPos.Y.Scale,
-				loggerStartPos.Y.Offset + delta.Y
-			)
-		end
-	end)
+    loggerGui = Instance.new("Frame")
+    loggerGui.Name = "ClientLoggerWindow"
+    loggerGui.Size = UDim2.new(0, 460, 0, 300)
+    loggerGui.Position = UDim2.new(0, 380, 0, 100)
+    loggerGui.BackgroundColor3 = COLOR_BG_DARK
+    loggerGui.BorderSizePixel = 0
+    loggerGui.Active = true
+    loggerGui.Visible = false
+    loggerGui.Parent = screenGui
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 24)
+    title.BackgroundColor3 = COLOR_PRIMARY
+    title.BorderSizePixel = 0
+    title.Text = "Client-side Event/Script Logger"
+    title.TextColor3 = COLOR_TEXT
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = loggerGui
+    
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 6)
+    pad.Parent = title
+    
+    local filterFrame = Instance.new("Frame")
+    filterFrame.Size = UDim2.new(1, -10, 0, 30)
+    filterFrame.Position = UDim2.new(0, 5, 0, 26)
+    filterFrame.BackgroundTransparency = 1
+    filterFrame.Parent = loggerGui
+    
+    local filterLayout = Instance.new("UIListLayout")
+    filterLayout.FillDirection = Enum.FillDirection.Horizontal
+    filterLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    filterLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    filterLayout.Padding = UDim.new(0, 6)
+    filterLayout.Parent = filterFrame
+    
+    local function MakeFilterToggle(text, default, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 65, 0, 24)
+        btn.BackgroundColor3 = COLOR_BUTTON
+        btn.TextColor3 = COLOR_TEXT
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 12
+        btn.BorderSizePixel = 0
+        local state = default
+        local function update()
+            btn.Text = text .. (state and " ON" or " OFF")
+        end
+        update()
+        btn.MouseButton1Click:Connect(function()
+            state = not state
+            update()
+            callback(state)
+        end)
+        btn.Parent = filterFrame
+        return btn
+    end
+    
+    MakeFilterToggle("Print", true, function(v) filter_prints = v end)
+    MakeFilterToggle("Remote", true, function(v) filter_remotes = v end)
+    MakeFilterToggle("Func", true, function(v) filter_functions = v end)
+    MakeFilterToggle("Phys", true, function(v) filter_physics = v end)
+    MakeFilterToggle("UI", true, function(v) filter_ui = v end)
+    MakeFilterToggle("Script", true, function(v) filter_localscripts = v end)
+    
+    local clearBtn = Instance.new("TextButton")
+    clearBtn.Size = UDim2.new(0, 50, 0, 24)
+    clearBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+    clearBtn.TextColor3 = COLOR_TEXT
+    clearBtn.Font = Enum.Font.GothamBold
+    clearBtn.TextSize = 12
+    clearBtn.Text = "CLEAR"
+    clearBtn.BorderSizePixel = 0
+    clearBtn.Parent = filterFrame
+    
+    clearBtn.MouseButton1Click:Connect(function()
+        if loggerScroll then
+            for _, child in ipairs(loggerScroll:GetChildren()) do
+                if child:IsA("TextLabel") then
+                    child:Destroy()
+                end
+            end
+        end
+    end)
+    
+    loggerScroll = Instance.new("ScrollingFrame")
+    loggerScroll.Size = UDim2.new(1, -10, 1, -66)
+    loggerScroll.Position = UDim2.new(0, 5, 0, 60)
+    loggerScroll.BackgroundTransparency = 1
+    loggerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    loggerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    loggerScroll.ScrollBarThickness = 6
+    loggerScroll.Parent = loggerGui
+    
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 2)
+    layout.Parent = loggerScroll
+    
+    title.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            loggerDragging = true
+            loggerDragStart = input.Position
+            loggerStartPos = loggerGui.Position
+        end
+    end)
+    
+    title.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            loggerDragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if loggerDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - loggerDragStart
+            loggerGui.Position = UDim2.new(
+                loggerStartPos.X.Scale,
+                loggerStartPos.X.Offset + delta.X,
+                loggerStartPos.Y.Scale,
+                loggerStartPos.Y.Offset + delta.Y
+            )
+        end
+    end)
 end
 
 CreateLoggerGui()
 
-----------------------------------------------------------------
--- Logging function (with filters)
-----------------------------------------------------------------
 local function Log(msg, category)
-	-- Check if logger is enabled and GUI exists
-	if not loggerEnabled or not loggerScroll then return end
-	
-	if category == "print" and not filter_prints then return end
-	if category == "remote" and not filter_remotes then return end
-	if category == "function" and not filter_functions then return end
-	if category == "physics" and not filter_physics then return end
-	if category == "ui" and not filter_ui then return end
-	if category == "localscript" and not filter_localscripts then return end
-
-	local line = Instance.new("TextLabel")
-	line.Size = UDim2.new(1, -4, 0, 18)
-	line.BackgroundTransparency = 1
-	line.TextColor3 = COLOR_TEXT
-	line.Font = Enum.Font.Code
-	line.TextSize = 13
-	line.TextXAlignment = Enum.TextXAlignment.Left
-	line.Text = msg
-	line.TextWrapped = false
-	line.TextTruncate = Enum.TextTruncate.AtEnd
-	line.Parent = loggerScroll
+    if not loggerEnabled or not loggerScroll then return end
+    
+    if category == "print" and not filter_prints then return end
+    if category == "remote" and not filter_remotes then return end
+    if category == "function" and not filter_functions then return end
+    if category == "physics" and not filter_physics then return end
+    if category == "ui" and not filter_ui then return end
+    if category == "localscript" and not filter_localscripts then return end
+    
+    local line = Instance.new("TextLabel")
+    line.Size = UDim2.new(1, -4, 0, 18)
+    line.BackgroundTransparency = 1
+    line.TextColor3 = COLOR_TEXT
+    line.Font = Enum.Font.Code
+    line.TextSize = 13
+    line.TextXAlignment = Enum.TextXAlignment.Left
+    line.Text = msg
+    line.TextWrapped = false
+    line.TextTruncate = Enum.TextTruncate.AtEnd
+    line.Parent = loggerScroll
 end
 
-----------------------------------------------------------------
--- Hook print/warn/error
-----------------------------------------------------------------
 local function HookPrints()
-	if loggerOldPrint then return end
-
-	loggerOldPrint = print
-	loggerOldWarn = warn
-	loggerOldError = error
-
-	getgenv().print = function(...)
-		loggerOldPrint(...)
-		local args = {...}
-		local msg = ""
-		for i, v in ipairs(args) do
-			msg = msg .. tostring(v) .. (i < #args and " " or "")
-		end
-		Log("[PRINT] " .. msg, "print")
-	end
-
-	getgenv().warn = function(...)
-		loggerOldWarn(...)
-		local args = {...}
-		local msg = ""
-		for i, v in ipairs(args) do
-			msg = msg .. tostring(v) .. (i < #args and " " or "")
-		end
-		Log("[WARN] " .. msg, "print")
-	end
-
-	-- Don't hook error as it halts execution
+    if loggerOldPrint then return end
+    
+    loggerOldPrint = print
+    loggerOldWarn = warn
+    
+    getgenv().print = function(...)
+        loggerOldPrint(...)
+        local args = {...}
+        local msg = ""
+        for i, v in ipairs(args) do
+            msg = msg .. tostring(v) .. (i < #args and " " or "")
+        end
+        Log("[PRINT] " .. msg, "print")
+    end
+    
+    getgenv().warn = function(...)
+        loggerOldWarn(...)
+        local args = {...}
+        local msg = ""
+        for i, v in ipairs(args) do
+            msg = msg .. tostring(v) .. (i < #args and " " or "")
+        end
+        Log("[WARN] " .. msg, "print")
+    end
 end
 
-----------------------------------------------------------------
--- Hook RemoteEvents & RemoteFunctions
-----------------------------------------------------------------
 local function HookRemotes()
-	local function hookRemote(obj)
-		if obj:IsA("RemoteEvent") then
-			local c = obj.OnClientEvent:Connect(function(...)
-				local args = {...}
-				local argStr = ""
-				for i, v in ipairs(args) do
-					argStr = argStr .. tostring(v) .. (i < #args and ", " or "")
-				end
-				Log("[RemoteEvent] " .. obj:GetFullName() .. " (" .. argStr .. ")", "remote")
-			end)
-			table.insert(loggerHooks, function() c:Disconnect() end)
-
-		elseif obj:IsA("RemoteFunction") then
-			if not loggerRemoteOldInvoke[obj] then
-				loggerRemoteOldInvoke[obj] = obj.OnClientInvoke
-				obj.OnClientInvoke = function(...)
-					Log("[RemoteFunction] " .. obj:GetFullName(), "function")
-					if loggerRemoteOldInvoke[obj] then
-						return loggerRemoteOldInvoke[obj](...)
-					end
-				end
-				table.insert(loggerHooks, function()
-					if loggerRemoteOldInvoke[obj] then
-						obj.OnClientInvoke = loggerRemoteOldInvoke[obj]
-					end
-				end)
-			end
-		end
-	end
-
-	-- Hook existing remotes
-	for _, obj in ipairs(game:GetDescendants()) do
-		pcall(function()
-			hookRemote(obj)
-		end)
-	end
-
-	-- Hook new remotes
-	local c = game.DescendantAdded:Connect(function(obj)
-		pcall(function()
-			hookRemote(obj)
-		end)
-	end)
-	table.insert(loggerHooks, function() c:Disconnect() end)
+    local function hookRemote(obj)
+        if obj:IsA("RemoteEvent") then
+            local c = obj.OnClientEvent:Connect(function(...)
+                local args = {...}
+                local argStr = ""
+                for i, v in ipairs(args) do
+                    argStr = argStr .. tostring(v) .. (i < #args and ", " or "")
+                end
+                Log("[RemoteEvent] " .. obj:GetFullName() .. " (" .. argStr .. ")", "remote")
+            end)
+            table.insert(loggerHooks, function()
+                c:Disconnect()
+            end)
+        elseif obj:IsA("RemoteFunction") then
+            if not loggerRemoteOldInvoke[obj] then
+                loggerRemoteOldInvoke[obj] = obj.OnClientInvoke
+                obj.OnClientInvoke = function(...)
+                    Log("[RemoteFunction] " .. obj:GetFullName(), "function")
+                    if loggerRemoteOldInvoke[obj] then
+                        return loggerRemoteOldInvoke[obj](...)
+                    end
+                end
+                table.insert(loggerHooks, function()
+                    if loggerRemoteOldInvoke[obj] then
+                        obj.OnClientInvoke = loggerRemoteOldInvoke[obj]
+                    end
+                end)
+            end
+        end
+    end
+    
+    for _, obj in ipairs(game:GetDescendants()) do
+        pcall(function()
+            hookRemote(obj)
+        end)
+    end
+    
+    local c = game.DescendantAdded:Connect(function(obj)
+        pcall(function()
+            hookRemote(obj)
+        end)
+    end)
+    table.insert(loggerHooks, function()
+        c:Disconnect()
+    end)
 end
 
-----------------------------------------------------------------
--- Hook character movement
-----------------------------------------------------------------
-local function HookCharacter()
-	local char = LocalPlayer.Character
-	if not char then return end
-	
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	local last = hrp.Position
-	local moveCount = 0
-	local lastLog = tick()
-	
-	local c = RunService.Heartbeat:Connect(function()
-		if not hrp or not hrp.Parent then return end
-		if (hrp.Position - last).Magnitude > 0.1 then
-			moveCount = moveCount + 1
-			last = hrp.Position
-			
-			-- Only log every 60 movements or every 2 seconds to avoid spam
-			if moveCount >= 60 or (tick() - lastLog) >= 2 then
-				Log("[Physics] HRP moved (" .. moveCount .. " frames)", "physics")
-				moveCount = 0
-				lastLog = tick()
-			end
-		end
-	end)
-
-	table.insert(loggerHooks, function() c:Disconnect() end)
-end
-
-----------------------------------------------------------------
--- Hook UI changes
-----------------------------------------------------------------
-local function HookUI()
-	local c = CoreGui.DescendantAdded:Connect(function(obj)
-		Log("[UI Added] " .. obj:GetFullName(), "ui")
-	end)
-	table.insert(loggerHooks, function() c:Disconnect() end)
-end
-
-----------------------------------------------------------------
--- Hook LocalScripts (Added / Removed / Enabled / Disabled)
-----------------------------------------------------------------
 local function HookLocalScripts()
-	local function hookScript(obj)
-		if obj:IsA("LocalScript") then
-			Log("[LocalScript Added] " .. obj:GetFullName(), "localscript")
-
-			local propConn = obj:GetPropertyChangedSignal("Enabled"):Connect(function()
-				Log("[LocalScript Toggled] " .. obj:GetFullName() ..
-					" Enabled=" .. tostring(obj.Enabled), "localscript")
-			end)
-			
-			table.insert(loggerHooks, function() propConn:Disconnect() end)
-		end
-	end
-
-	-- Hook existing scripts
-	for _, obj in ipairs(game:GetDescendants()) do
-		pcall(function()
-			hookScript(obj)
-		end)
-	end
-
-	local addedConn = game.DescendantAdded:Connect(function(obj)
-		pcall(function()
-			hookScript(obj)
-		end)
-	end)
-
-	local removedConn = game.DescendantRemoving:Connect(function(obj)
-		if obj:IsA("LocalScript") then
-			Log("[LocalScript Removed] " .. obj:GetFullName(), "localscript")
-		end
-	end)
-
-	table.insert(loggerHooks, function()
-		addedConn:Disconnect()
-		removedConn:Disconnect()
-	end)
+    local function hookScript(obj)
+        if obj:IsA("LocalScript") then
+            Log("[LocalScript Added] " .. obj:GetFullName(), "localscript")
+            
+            local propConn = obj:GetPropertyChangedSignal("Enabled"):Connect(function()
+                Log("[LocalScript Toggled] " .. obj:GetFullName() .. " Enabled=" .. tostring(obj.Enabled), "localscript")
+            end)
+            table.insert(loggerHooks, function()
+                propConn:Disconnect()
+            end)
+        end
+    end
+    
+    for _, obj in ipairs(game:GetDescendants()) do
+        pcall(function()
+            hookScript(obj)
+        end)
+    end
+    
+    local addedConn = game.DescendantAdded:Connect(function(obj)
+        pcall(function()
+            hookScript(obj)
+        end)
+    end)
+    
+    local removedConn = game.DescendantRemoving:Connect(function(obj)
+        if obj:IsA("LocalScript") then
+            Log("[LocalScript Removed] " .. obj:GetFullName(), "localscript")
+        end
+    end)
+    
+    table.insert(loggerHooks, function()
+        addedConn:Disconnect()
+        removedConn:Disconnect()
+    end)
 end
 
-----------------------------------------------------------------
--- Enable / Disable Logger
-----------------------------------------------------------------
 local function EnableLogger()
-	if loggerEnabled then return end
-	loggerEnabled = true
-	loggerGui.Visible = true
-	
-	-- Clear old hooks first
-	for _, fn in ipairs(loggerHooks) do
-		pcall(fn)
-	end
-	loggerHooks = {}
-
-	Log("Logger enabled", "print")
-
-	HookPrints()
-	HookRemotes()
-	HookCharacter()
-	HookUI()
-	HookLocalScripts()
+    if loggerEnabled then return end
+    loggerEnabled = true
+    loggerGui.Visible = true
+    
+    for _, fn in ipairs(loggerHooks) do
+        pcall(fn)
+    end
+    loggerHooks = {}
+    
+    Log("Logger enabled", "print")
+    HookPrints()
+    HookRemotes()
+    HookLocalScripts()
 end
 
 local function DisableLogger()
-	if not loggerEnabled then return end
-	loggerEnabled = false
-	loggerGui.Visible = false
-
-	for _, fn in ipairs(loggerHooks) do
-		pcall(fn)
-	end
-	loggerHooks = {}
-
-	for obj, old in pairs(loggerRemoteOldInvoke) do
-		pcall(function()
-			obj.OnClientInvoke = old
-		end)
-	end
-	loggerRemoteOldInvoke = {}
-
-	if loggerOldPrint then
-		getgenv().print = loggerOldPrint
-		getgenv().warn = loggerOldWarn
-		loggerOldPrint, loggerOldWarn, loggerOldError = nil, nil, nil
-	end
+    if not loggerEnabled then return end
+    loggerEnabled = false
+    loggerGui.Visible = false
+    
+    for _, fn in ipairs(loggerHooks) do
+        pcall(fn)
+    end
+    loggerHooks = {}
+    
+    for obj, old in pairs(loggerRemoteOldInvoke) do
+        pcall(function()
+            obj.OnClientInvoke = old
+        end)
+    end
+    loggerRemoteOldInvoke = {}
+    
+    if loggerOldPrint then
+        getgenv().print = loggerOldPrint
+        getgenv().warn = loggerOldWarn
+        loggerOldPrint, loggerOldWarn, loggerOldError = nil, nil, nil
+    end
 end
-
-----------------------------------------------------------------
--- Logger Toggle in Menu
-----------------------------------------------------------------
-local loggerLabel = MakeLabel("Client Logger")
-loggerLabel.Parent = content
 
 MakeToggle(content, "Logger", function(on)
-	if on then
-		EnableLogger()
-	else
-		DisableLogger()
-	end
-end)
-----------------------------------------------------------------
--- LocalScript Manager (Floating Window, Compact Rows)
-----------------------------------------------------------------
-
-local scriptManagerGui
-local scriptList
-local scriptDragging = false
-local scriptDragStart
-local scriptStartPos
-
-local ScriptBackups = {}
-local ManagedScripts = {}
-
--- LocalScript Manager (Floating Window, Compact Rows)
-local scriptManagerGui
-local scriptList
-local scriptDragging = false
-local scriptDragStart
-local scriptStartPos
-
-local ScriptBackups = {}
-local ManagedScripts = {}
-
--- Define color constants
-local COLOR_BG_DARK = Color3.fromRGB(30, 30, 30)
-local COLOR_PRIMARY = Color3.fromRGB(0, 120, 215)
-local COLOR_TEXT = Color3.fromRGB(255, 255, 255)
-local COLOR_BG = Color3.fromRGB(45, 45, 45)
-local COLOR_BUTTON = Color3.fromRGB(60, 60, 60)
-
--- Get required services
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
--- Create LocalScript Manager GUI
-local function CreateScriptManagerGui()
-	scriptManagerGui = Instance.new("Frame")
-	scriptManagerGui.Name = "LocalScriptManager"
-	scriptManagerGui.Size = UDim2.new(0, 420, 0, 300)
-	scriptManagerGui.Position = UDim2.new(0, 420, 0, 120)
-	scriptManagerGui.BackgroundColor3 = COLOR_BG_DARK
-	scriptManagerGui.BorderSizePixel = 0
-	scriptManagerGui.Active = true
-	scriptManagerGui.Visible = false
-	scriptManagerGui.Parent = game:GetService("CoreGui") -- Use CoreGui instead of screenGui
-
-	-- Title bar
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 24)
-	title.BackgroundColor3 = COLOR_PRIMARY
-	title.BorderSizePixel = 0
-	title.Text = "fujiwarasayo's LocalScript Manager"
-	title.TextColor3 = COLOR_TEXT
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = scriptManagerGui
-
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 6)
-	pad.Parent = title
-
-	-- Script list
-	scriptList = Instance.new("ScrollingFrame")
-	scriptList.Size = UDim2.new(1, -10, 1, -34)
-	scriptList.Position = UDim2.new(0, 5, 0, 30)
-	scriptList.BackgroundTransparency = 1
-	scriptList.CanvasSize = UDim2.new(0, 0, 0, 0)
-	scriptList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scriptList.ScrollBarThickness = 6
-	scriptList.Parent = scriptManagerGui
-
-	local layout = Instance.new("UIListLayout")
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 4)
-	layout.Parent = scriptList
-
-	-- Dragging
-	title.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			scriptDragging = true
-			scriptDragStart = input.Position
-			scriptStartPos = scriptManagerGui.Position
-		end
-	end)
-
-	title.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			scriptDragging = false
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input)
-		if scriptDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - scriptDragStart
-			scriptManagerGui.Position = UDim2.new(
-				scriptStartPos.X.Scale,
-				scriptStartPos.X.Offset + delta.X,
-				scriptStartPos.Y.Scale,
-				scriptStartPos.Y.Offset + delta.Y
-			)
-		end
-	end)
-end
-
-CreateScriptManagerGui()
-
--- Add Script Row (Compact Layout)
-local function AddScriptRow(scr)
-	if ManagedScripts[scr] then return end
-	ManagedScripts[scr] = true
-
-	-- Backup
-	if not ScriptBackups[scr] then
-		local ok, clone = pcall(function() return scr:Clone() end)
-		if ok and clone then
-			ScriptBackups[scr] = clone
-		end
-	end
-
-	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, -4, 0, 24)
-	row.BackgroundColor3 = COLOR_BG
-	row.BorderSizePixel = 0
-	row.Parent = scriptList
-
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(0.4, 0, 1, 0)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = scr.Name
-	nameLabel.TextColor3 = COLOR_TEXT
-	nameLabel.Font = Enum.Font.Gotham
-	nameLabel.TextSize = 12
-	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-	nameLabel.Parent = row
-
-	local disableBtn = Instance.new("TextButton")
-	disableBtn.Size = UDim2.new(0.2, -4, 1, 0)
-	disableBtn.Position = UDim2.new(0.4, 4, 0, 0)
-	disableBtn.BackgroundColor3 = COLOR_BUTTON
-	disableBtn.Text = "Disable"
-	disableBtn.TextColor3 = COLOR_TEXT
-	disableBtn.Font = Enum.Font.Gotham
-	disableBtn.TextSize = 12
-	disableBtn.Parent = row
-
-	local removeBtn = Instance.new("TextButton")
-	removeBtn.Size = UDim2.new(0.2, -4, 1, 0)
-	removeBtn.Position = UDim2.new(0.6, 4, 0, 0)
-	removeBtn.BackgroundColor3 = COLOR_BUTTON
-	removeBtn.Text = "Remove"
-	removeBtn.TextColor3 = COLOR_TEXT
-	removeBtn.Font = Enum.Font.Gotham
-	removeBtn.TextSize = 12
-	removeBtn.Parent = row
-
-	local restoreBtn = Instance.new("TextButton")
-	restoreBtn.Size = UDim2.new(0.2, -4, 1, 0)
-	restoreBtn.Position = UDim2.new(0.8, 4, 0, 0)
-	restoreBtn.BackgroundColor3 = COLOR_BUTTON
-	restoreBtn.Text = "Restore"
-	restoreBtn.TextColor3 = COLOR_TEXT
-	restoreBtn.Font = Enum.Font.Gotham
-	restoreBtn.TextSize = 12
-	restoreBtn.Parent = row
-
-	disableBtn.MouseButton1Click:Connect(function()
-		scr.Enabled = false
-	end)
-
-	removeBtn.MouseButton1Click:Connect(function()
-		scr:Destroy()
-	end)
-
-	restoreBtn.MouseButton1Click:Connect(function()
-		local backup = ScriptBackups[scr]
-		if backup then
-			local ok, clone = pcall(function() return backup:Clone() end)
-			if ok and clone then
-				clone.Parent = scr.Parent
-			end
-		end
-	end)
-end
-
--- Live Script Scanner
-local function ScanScripts()
-	for _, obj in ipairs(game:GetDescendants()) do
-		if obj:IsA("LocalScript") then
-			if not obj:IsDescendantOf(scriptManagerGui) then
-				AddScriptRow(obj)
-			end
-		end
-	end
-end
-
-task.spawn(function()
-	while true do
-		ScanScripts()
-		task.wait(1)
-	end
+    if on then
+        EnableLogger()
+    else
+        DisableLogger()
+    end
 end)
 
--- Button in Main Menu
-local function MakeButton(text)
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(0, 150, 0, 30)
-	button.BackgroundColor3 = COLOR_BUTTON
-	button.Text = text
-	button.TextColor3 = COLOR_TEXT
-	button.Font = Enum.Font.Gotham
-	button.TextSize = 12
-	button.Parent = game:GetService("CoreGui") -- Ensure button is in CoreGui
-	return button
-end
-
-local scriptManagerBtn = MakeButton("LocalScript Manager")
-scriptManagerBtn.Parent = game:GetService("CoreGui")
-
-scriptManagerBtn.MouseButton1Click:Connect(function()
-	scriptManagerGui.Visible = not scriptManagerGui.Visible
-end)
-----------------------------------------------------------------
--- Topk3k Button in Main Menu
-----------------------------------------------------------------
-local topkekBtn = MakeButton("Topk3k")
-topkekBtn.Parent = content
-
-----------------------------------------------------------------
--- Topk3k Window (SS Edition Style)
-----------------------------------------------------------------
-local Topkek_LocalPlayer = Instance.new("Frame")
-Topkek_LocalPlayer.Name = "Topkek_LocalPlayer"
-Topkek_LocalPlayer.Size = UDim2.new(0, 420, 0, 360)
-Topkek_LocalPlayer.Position = UDim2.new(0, 420, 0, 120)
-Topkek_LocalPlayer.BackgroundColor3 = Color3.fromRGB(7, 11, 15)
-Topkek_LocalPlayer.BorderColor3 = Color3.fromRGB(150, 10, 30)
-Topkek_LocalPlayer.BorderSizePixel = 1
-Topkek_LocalPlayer.Visible = false
-Topkek_LocalPlayer.Parent = screenGui
-
-local header = Instance.new("TextLabel")
-header.Size = UDim2.new(1, 0, 0, 28)
-header.BackgroundColor3 = Color3.fromRGB(150, 10, 30)
-header.BorderSizePixel = 0
-header.Text = "fujiwarasayo's topk3k"
-header.TextColor3 = Color3.fromRGB(255, 255, 255)
-header.Font = Enum.Font.GothamBold
-header.TextSize = 16
-header.Parent = Topkek_LocalPlayer
-
-local layout = Instance.new("UIListLayout")
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 6)
-layout.Parent = Topkek_LocalPlayer
-
-----------------------------------------------------------------
--- State
-----------------------------------------------------------------
-local CurrentState = {
-	WalkSpeed = 16,
-	JumpPower = 50,
-	FOV = 70,
-	Fly = false,
-	FlySpeed = 2,
-	FlyBody = nil,
-	Noclip = false,
-	Freecam = false,
-	Cosmetics = {},
-}
-
-local function getHumanoid()
-	local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-	return char:FindFirstChildOfClass("Humanoid")
-end
-
-----------------------------------------------------------------
--- Section Helper
-----------------------------------------------------------------
-local function CreateSection(title)
-	local section = Instance.new("Frame")
-	section.Size = UDim2.new(1, -10, 0, 80)
-	section.BackgroundColor3 = Color3.fromRGB(7, 11, 15)
-	section.BorderColor3 = Color3.fromRGB(150, 10, 30)
-	section.BorderSizePixel = 1
-	section.Parent = Topkek_LocalPlayer
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 20)
-	label.BackgroundTransparency = 1
-	label.Text = title
-	label.TextColor3 = Color3.fromRGB(200, 200, 200)
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 14
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = section
-
-	return section
-end
-
-local function MakeBox(parent, pos, text, callback)
-	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(0, 80, 0, 20)
-	box.Position = pos
-	box.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
-	box.TextColor3 = Color3.fromRGB(200, 200, 200)
-	box.Font = Enum.Font.Gotham
-	box.TextSize = 12
-	box.Text = text
-	box.ClearTextOnFocus = false
-	box.Parent = parent
-
-	box.FocusLost:Connect(function()
-		local val = tonumber(box.Text)
-		if val then callback(val) else box.Text = text end
-	end)
-end
-
-local function MakeToggle(parent, pos, label, stateKey)
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, 90, 0, 20)
-	btn.Position = pos
-	btn.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
-	btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-	btn.Font = Enum.Font.Gotham
-	btn.TextSize = 12
-	btn.Text = label .. ": OFF"
-	btn.Parent = parent
-
-	btn.MouseButton1Click:Connect(function()
-		CurrentState[stateKey] = not CurrentState[stateKey]
-		btn.Text = label .. ": " .. (CurrentState[stateKey] and "ON" or "OFF")
-	end)
-end
-
-----------------------------------------------------------------
--- Movement Section (with labels + fixed logic)
-----------------------------------------------------------------
-local move = CreateSection("Movement")
-
--- WalkSpeed Label
-local wsLabel = Instance.new("TextLabel")
-wsLabel.Size = UDim2.new(0, 80, 0, 20)
-wsLabel.Position = UDim2.new(0, 5, 0, 25)
-wsLabel.BackgroundTransparency = 1
-wsLabel.Text = "WalkSpeed:"
-wsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-wsLabel.Font = Enum.Font.Gotham
-wsLabel.TextSize = 12
-wsLabel.TextXAlignment = Enum.TextXAlignment.Left
-wsLabel.Parent = move
-
--- WalkSpeed Box
-MakeBox(move, UDim2.new(0, 90, 0, 25), tostring(CurrentState.WalkSpeed), function(val)
-	local hum = getHumanoid()
-	if hum then
-		hum.WalkSpeed = val
-	end
-	CurrentState.WalkSpeed = val
-end)
-
--- JumpPower Label
-local jpLabel = Instance.new("TextLabel")
-jpLabel.Size = UDim2.new(0, 80, 0, 20)
-jpLabel.Position = UDim2.new(0, 5, 0, 50)
-jpLabel.BackgroundTransparency = 1
-jpLabel.Text = "JumpPower:"
-jpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-jpLabel.Font = Enum.Font.Gotham
-jpLabel.TextSize = 12
-jpLabel.TextXAlignment = Enum.TextXAlignment.Left
-jpLabel.Parent = move
-
--- JumpPower Box (FIXED)
-MakeBox(move, UDim2.new(0, 90, 0, 50), tostring(CurrentState.JumpPower), function(val)
-	local hum = getHumanoid()
-	if hum then
-		hum.UseJumpPower = true
-		hum.JumpPower = val
-	end
-	CurrentState.JumpPower = val
-end)
-
--- Toggles
-MakeToggle(move, UDim2.new(0, 190, 0, 25), "Noclip", "Noclip")
-MakeToggle(move, UDim2.new(0, 190, 0, 50), "Fly", "Fly")
-
-----------------------------------------------------------------
--- MOVEMENT SYSTEMS (Fly + Noclip)
-----------------------------------------------------------------
-
--- Fly System
-game:GetService("RunService").Heartbeat:Connect(function()
-	if CurrentState.Fly then
-		local hum = getHumanoid()
-		if hum and hum.RootPart then
-
-			-- Create BodyVelocity if missing
-			if not CurrentState.FlyBody then
-				local bv = Instance.new("BodyVelocity")
-				bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-				bv.Parent = hum.RootPart
-				CurrentState.FlyBody = bv
-			end
-
-			-- Move in camera direction
-			local cam = workspace.CurrentCamera
-			CurrentState.FlyBody.Velocity = cam.CFrame.LookVector * (CurrentState.FlySpeed * 20)
-		end
-	else
-		-- Remove BodyVelocity when Fly is off
-		if CurrentState.FlyBody then
-			CurrentState.FlyBody:Destroy()
-			CurrentState.FlyBody = nil
-		end
-	end
-end)
-
--- Noclip System
-game:GetService("RunService").Stepped:Connect(function()
-	if CurrentState.Noclip then
-		local char = game.Players.LocalPlayer.Character
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
-		end
-	end
-end)
-
-----------------------------------------------------------------
--- Camera Section
-----------------------------------------------------------------
-local cam = CreateSection("Camera")
-
-MakeBox(cam, UDim2.new(0, 5, 0, 25), "70", function(val)
-	workspace.CurrentCamera.FieldOfView = val
-	CurrentState.FOV = val
-end)
-
-MakeToggle(cam, UDim2.new(0, 100, 0, 25), "Freecam", "Freecam")
-
-----------------------------------------------------------------
--- Character Section
-----------------------------------------------------------------
-local char = CreateSection("Character")
-
-local glowBtn = Instance.new("TextButton")
-glowBtn.Size = UDim2.new(0, 80, 0, 20)
-glowBtn.Position = UDim2.new(0, 5, 0, 25)
-glowBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
-glowBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-glowBtn.Font = Enum.Font.Gotham
-glowBtn.TextSize = 12
-glowBtn.Text = "Glow"
-glowBtn.Parent = char
-
-glowBtn.MouseButton1Click:Connect(function()
-	local c = game.Players.LocalPlayer.Character
-	if not c then return end
-
-	local h = Instance.new("Highlight")
-	h.FillColor = Color3.fromRGB(255, 0, 0)
-	h.OutlineColor = Color3.fromRGB(255, 255, 255)
-	h.Parent = c
-
-	table.insert(CurrentState.Cosmetics, h)
-end)
-
-----------------------------------------------------------------
--- Gear Preview Section (InsertService loader)
-----------------------------------------------------------------
-local gear = CreateSection("Gear Preview")
-
-local gearBox = Instance.new("TextBox")
-gearBox.Size = UDim2.new(0, 100, 0, 20)
-gearBox.Position = UDim2.new(0, 5, 0, 25)
-gearBox.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
-gearBox.TextColor3 = Color3.fromRGB(200, 200, 200)
-gearBox.Font = Enum.Font.Gotham
-gearBox.TextSize = 12
-gearBox.Text = "Gear ID"
-gearBox.ClearTextOnFocus = false
-gearBox.Parent = gear
-
-local loadBtn = Instance.new("TextButton")
-loadBtn.Size = UDim2.new(0, 70, 0, 20)
-loadBtn.Position = UDim2.new(0, 110, 0, 25)
-loadBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
-loadBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-loadBtn.Font = Enum.Font.Gotham
-loadBtn.TextSize = 12
-loadBtn.Text = "Load"
-loadBtn.Parent = gear
-
-local loadedGear = nil
-
-loadBtn.MouseButton1Click:Connect(function()
-	local id = tonumber(gearBox.Text)
-	if not id then return end
-
-	if loadedGear then
-		loadedGear:Destroy()
-		loadedGear = nil
-	end
-
-	local success, model = pcall(function()
-		return game:GetService("InsertService"):LoadAsset(id)
-	end)
-
-	if success and model then
-		local tool = model:FindFirstChildWhichIsA("Tool", true)
-		if tool then
-			tool.Parent = game.Players.LocalPlayer.Backpack
-			loadedGear = tool
-		else
-			model:Destroy()
-		end
-	end
-end)
-
-local removeBtn = Instance.new("TextButton")
-removeBtn.Size = UDim2.new(0, 70, 0, 20)
-removeBtn.Position = UDim2.new(0, 190, 0, 25)
-removeBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
-removeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-removeBtn.Font = Enum.Font.Gotham
-removeBtn.TextSize = 12
-removeBtn.Text = "Remove"
-removeBtn.Parent = gear
-
-removeBtn.MouseButton1Click:Connect(function()
-	if loadedGear then
-		loadedGear:Destroy()
-		loadedGear = nil
-	end
-end)
-
-topkekBtn.MouseButton1Click:Connect(function()
-	Topkek_LocalPlayer.Visible = not Topkek_LocalPlayer.Visible
-end)
-----------------------------------------------------------------
--- Dex Explorer (GitHub version)
-----------------------------------------------------------------
-
+-- ===== DEX EXPLORER =====
 local dexLabel = MakeLabel("Dex Explorer")
 dexLabel.Parent = content
 
-local dexFrame = Instance.new("Frame")
-dexFrame.Size = UDim2.new(1, 0, 0, 36)
-dexFrame.BackgroundTransparency = 1
-assignOrder(dexFrame)
-dexFrame.Parent = content
-
-local dexButton = Instance.new("TextButton")
-dexButton.Size = UDim2.new(1, 0, 1, 0)
-dexButton.BackgroundColor3 = Color3.fromRGB(0, 85, 255) -- Match your other buttons
-dexButton.BorderColor3 = Color3.fromRGB(150, 10, 30) -- Optional: red accent if used elsewhere
-dexButton.BorderSizePixel = 1
-dexButton.TextColor3 = COLOR_TEXT
-dexButton.Font = Enum.Font.Gotham
-dexButton.TextSize = 14
-dexButton.Text = "Open Dex"
-dexButton.Parent = dexFrame
-
+local dexButton = MakeButton("Open Dex")
+dexButton.Parent = content
 
 dexButton.MouseButton1Click:Connect(function()
-	task.spawn(function()
-		local url = "https://raw.githubusercontent.com/scr1ptyureishirayukimikotofujiwarasayo/our-roblox-scripts/refs/heads/main/dexexplorer.lua"
-		local src = game:GetService("HttpService"):GetAsync(url)
-		loadstring(src)()
-	end)
+    task.spawn(function()
+        local url = "https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"
+        local success, src = pcall(function()
+            return game:HttpGet(url)
+        end)
+        if success and src then
+            loadstring(src)()
+        end
+    end)
 end)
+
+-- ===== TOPK3K GUI =====
+local topkekLabel = MakeLabel("Topk3k Client")
+topkekLabel.Parent = content
+
+local topkekButton = MakeButton("Open fujiwarasayo's topk3k")
+topkekButton.Parent = content
+
+-- Create Topk3k GUI
+local Topk3kGui
+local Topk3kBase
+local Topk3kVisible = false
+
+local function CreateTopk3kGui()
+    if Topk3kGui then return end
+    
+    Topk3kGui = Instance.new("ScreenGui")
+    Topk3kGui.Name = "Topk3kGui"
+    Topk3kGui.ResetOnSpawn = false
+    safeParent(Topk3kGui)
+    
+    Topk3kBase = Instance.new("Frame")
+    Topk3kBase.Name = "Base"
+    Topk3kBase.Size = UDim2.new(0, 450, 0, 300)
+    Topk3kBase.Position = UDim2.new(0.5, -225, 0.5, -150)
+    Topk3kBase.BackgroundColor3 = Color3.fromRGB(14, 23, 29)
+    Topk3kBase.BorderColor3 = Color3.fromRGB(4, 7, 9)
+    Topk3kBase.BorderSizePixel = 2
+    Topk3kBase.Active = true
+    Topk3kBase.Visible = false
+    Topk3kBase.Parent = Topk3kGui
+    
+    -- Top Bar
+    local Top = Instance.new("Frame")
+    Top.Name = "Top"
+    Top.Size = UDim2.new(1, -20, 0, 20)
+    Top.Position = UDim2.new(0, 10, 0, 7)
+    Top.BackgroundColor3 = Color3.fromRGB(7, 11, 15)
+    Top.BackgroundTransparency = 0.5
+    Top.BorderColor3 = Color3.fromRGB(62, 62, 62)
+    Top.Parent = Topk3kBase
+    
+    local First = Instance.new("TextLabel")
+    First.Name = "First"
+    First.Size = UDim2.new(1, 0, 1, 0)
+    First.BackgroundTransparency = 1
+    First.Font = Enum.Font.SourceSans
+    First.TextSize = 18
+    First.Text = "  fujiwarasayo's T0PK3K"
+    First.TextColor3 = Color3.fromRGB(184, 7, 54)
+    First.TextStrokeTransparency = 0
+    First.TextXAlignment = Enum.TextXAlignment.Left
+    First.Parent = Top
+    
+    local Second = Instance.new("TextLabel")
+    Second.Name = "Second"
+    Second.Size = UDim2.new(0, 100, 1, 0)
+    Second.Position = UDim2.new(1, -125, 0, 0)
+    Second.BackgroundTransparency = 1
+    Second.Font = Enum.Font.SourceSans
+    Second.TextSize = 18
+    Second.Text = "Client Edition"
+    Second.TextColor3 = Color3.fromRGB(184, 7, 54)
+    Second.TextStrokeTransparency = 0
+    Second.TextXAlignment = Enum.TextXAlignment.Left
+    Second.Parent = Top
+    
+    local Location = Instance.new("TextLabel")
+    Location.Name = "Location"
+    Location.Size = UDim2.new(1, -200, 1, 0)
+    Location.Position = UDim2.new(0, 90, 0, 0)
+    Location.BackgroundTransparency = 1
+    Location.Font = Enum.Font.SourceSansBold
+    Location.TextSize = 18
+    Location.Text = "LocalPlayer"
+    Location.TextColor3 = Color3.fromRGB(150, 5, 44)
+    Location.TextStrokeTransparency = 0
+    Location.Parent = Top
+    
+    local Exit = Instance.new("TextButton")
+    Exit.Name = "Exit"
+    Exit.Size = UDim2.new(0, 16, 0, 16)
+    Exit.Position = UDim2.new(1, -18, 0, 2)
+    Exit.BackgroundColor3 = Color3.fromRGB(150, 5, 44)
+    Exit.BorderSizePixel = 0
+    Exit.Font = Enum.Font.SourceSansBold
+    Exit.TextSize = 14
+    Exit.Text = "X"
+    Exit.TextColor3 = Color3.new(1, 1, 1)
+    Exit.Parent = Top
+    
+    Exit.MouseButton1Click:Connect(function()
+        Topk3kBase.Visible = false
+        Topk3kVisible = false
+    end)
+    
+    -- Dragging
+    local dragging = false
+    local dragStart
+    local startPos
+    
+    Top.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Topk3kBase.Position
+        end
+    end)
+    
+    Top.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            Topk3kBase.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- Main Container
+    local MainContainer = Instance.new("ScrollingFrame")
+    MainContainer.Name = "MainContainer"
+    MainContainer.Size = UDim2.new(1, -20, 1, -42)
+    MainContainer.Position = UDim2.new(0, 10, 0, 35)
+    MainContainer.BackgroundColor3 = Color3.fromRGB(7, 11, 15)
+    MainContainer.BackgroundTransparency = 0.5
+    MainContainer.BorderColor3 = Color3.fromRGB(62, 62, 62)
+    MainContainer.ScrollBarThickness = 5
+    MainContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    MainContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    MainContainer.Parent = Topk3kBase
+    
+    local function MakeTopkekButton(sz, txt, func, ysz, cbgd)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(sz, -4, 0, ysz or 20)
+        btn.BackgroundColor3 = cbgd or Color3.fromRGB(15, 23, 30)
+        btn.BorderColor3 = Color3.fromRGB(27, 42, 53)
+        btn.Font = Enum.Font.SourceSans
+        btn.TextSize = 14
+        btn.Text = txt
+        btn.TextColor3 = Color3.fromRGB(199, 199, 199)
+        btn.TextStrokeTransparency = 0.5
+        btn.Parent = MainContainer
+        
+        btn.MouseButton1Click:Connect(func)
+        return btn
+    end
+    
+    local function MakeTopkekTextBox(sz, txt, ysz, cbgd)
+        local tb = Instance.new("TextBox")
+        tb.Size = UDim2.new(sz, -4, 0, ysz or 20)
+        tb.BackgroundColor3 = cbgd or Color3.fromRGB(5, 8, 11)
+        tb.BorderColor3 = Color3.fromRGB(27, 42, 53)
+        tb.Font = Enum.Font.SourceSans
+        tb.TextSize = 14
+        tb.Text = txt
+        tb.TextColor3 = Color3.fromRGB(199, 199, 199)
+        tb.ClearTextOnFocus = false
+        tb.Parent = MainContainer
+        return tb
+    end
+    
+    local function MakeTopkekLabel(txt)
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -8, 0, 20)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.SourceSansBold
+        lbl.TextSize = 16
+        lbl.Text = txt
+        lbl.TextColor3 = Color3.fromRGB(198, 6, 44)
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = MainContainer
+        return lbl
+    end
+    
+    local UIListLayout = Instance.new("UIListLayout")
+    UIListLayout.Padding = UDim.new(0, 3)
+    UIListLayout.Parent = MainContainer
+    
+    -- Movement Section
+    MakeTopkekLabel("[ Movement ]")
+    
+    local wsInput = MakeTopkekTextBox(1/3, "16")
+    MakeTopkekButton(2/3, "Set WalkSpeed", function()
+        local val = tonumber(wsInput.Text)
+        if val and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = val
+        end
+    end)
+    
+    local jpInput = MakeTopkekTextBox(1/3, "50")
+    MakeTopkekButton(2/3, "Set JumpPower", function()
+        local val = tonumber(jpInput.Text)
+        if val and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.JumpPower = val
+        end
+    end)
+    
+    local hipHeightInput = MakeTopkekTextBox(1/3, "0")
+    MakeTopkekButton(2/3, "Set HipHeight", function()
+        local val = tonumber(hipHeightInput.Text)
+        if val and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.HipHeight = val
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Sit", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.Sit = true
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Jump", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.Jump = true
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Platform Stand", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.PlatformStand = not LocalPlayer.Character.Humanoid.PlatformStand
+        end
+    end)
+    
+    -- Character Visual Section
+    MakeTopkekLabel("[ Character Visual ]")
+    
+    MakeTopkekButton(1/2, "Invisible", function()
+        if LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("MeshPart") then
+                    part.Transparency = 1
+                end
+                if part:IsA("Decal") then
+                    part.Transparency = 1
+                end
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Visible", function()
+        if LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 0
+                elseif part:IsA("MeshPart") then
+                    part.Transparency = 0
+                end
+                if part:IsA("Decal") then
+                    part.Transparency = 0
+                end
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Bighead", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head:FindFirstChild("Mesh") then
+            LocalPlayer.Character.Head.Mesh.Scale = Vector3.new(5, 5, 5)
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Normal Head", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head:FindFirstChild("Mesh") then
+            LocalPlayer.Character.Head.Mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Tiny Head", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head:FindFirstChild("Mesh") then
+            LocalPlayer.Character.Head.Mesh.Scale = Vector3.new(0.5, 0.5, 0.5)
+        end
+    end)
+    
+    local reflectInput = MakeTopkekTextBox(1/3, "1")
+    MakeTopkekButton(2/3, "Set Reflectance", function()
+        local val = tonumber(reflectInput.Text)
+        if val and LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("MeshPart") then
+                    part.Reflectance = val
+                end
+            end
+        end
+    end)
+    
+    local colorInput = MakeTopkekTextBox(1/3, "Bright red")
+    MakeTopkekButton(2/3, "Set Color", function()
+        if LocalPlayer.Character then
+            local color = BrickColor.new(colorInput.Text)
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("MeshPart") then
+                    part.BrickColor = color
+                end
+            end
+        end
+    end)
+    
+    local matInput = MakeTopkekTextBox(1/3, "Neon")
+    MakeTopkekButton(2/3, "Set Material", function()
+        if LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("MeshPart") then
+                    pcall(function()
+                        part.Material = Enum.Material[matInput.Text]
+                    end)
+                end
+            end
+        end
+    end)
+    
+    -- Effects Section
+    MakeTopkekLabel("[ Effects ]")
+    
+    MakeTopkekButton(1/3, "Fire", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            Instance.new("Fire", LocalPlayer.Character.HumanoidRootPart)
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Sparkles", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            Instance.new("Sparkles", LocalPlayer.Character.HumanoidRootPart)
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Smoke", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            Instance.new("Smoke", LocalPlayer.Character.HumanoidRootPart)
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "PointLight", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local light = Instance.new("PointLight", LocalPlayer.Character.HumanoidRootPart)
+            light.Brightness = 5
+            light.Range = 20
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Particles", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local particle = Instance.new("ParticleEmitter", LocalPlayer.Character.HumanoidRootPart)
+            particle.Texture = "rbxasset://textures/particles/smoke_main.dds"
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Highlight", function()
+        if LocalPlayer.Character then
+            local highlight = Instance.new("Highlight", LocalPlayer.Character)
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Remove Effects", function()
+        if LocalPlayer.Character then
+            for _, obj in pairs(LocalPlayer.Character:GetDescendants()) do
+                if obj:IsA("Fire") or obj:IsA("Sparkles") or obj:IsA("Smoke") or obj:IsA("PointLight") or obj:IsA("ParticleEmitter") or obj:IsA("Highlight") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "ForceField", function()
+        if LocalPlayer.Character then
+            Instance.new("ForceField", LocalPlayer.Character)
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Selection Box", function()
+        if LocalPlayer.Character then
+            local sel = Instance.new("SelectionBox", LocalPlayer.Character)
+            sel.Adornee = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            sel.Color3 = Color3.fromRGB(255, 0, 0)
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Selection Sphere", function()
+        if LocalPlayer.Character then
+            local sel = Instance.new("SelectionSphere", LocalPlayer.Character)
+            sel.Adornee = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            sel.Color3 = Color3.fromRGB(0, 255, 0)
+        end
+    end)
+    
+    -- Camera Section
+    MakeTopkekLabel("[ Camera ]")
+    
+    local fovInput = MakeTopkekTextBox(1/3, "70")
+    MakeTopkekButton(2/3, "Set FOV", function()
+        local val = tonumber(fovInput.Text)
+        if val then
+            workspace.CurrentCamera.FieldOfView = val
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "First Person", function()
+        LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+    end)
+    
+    MakeTopkekButton(1/2, "Third Person", function()
+        LocalPlayer.CameraMode = Enum.CameraMode.Classic
+    end)
+    
+    local camDistInput = MakeTopkekTextBox(1/3, "12.5")
+    MakeTopkekButton(2/3, "Set Cam Distance", function()
+        local val = tonumber(camDistInput.Text)
+        if val then
+            LocalPlayer.CameraMaxZoomDistance = val
+            LocalPlayer.CameraMinZoomDistance = val
+        end
+    end)
+    
+    MakeTopkekButton(1, "Reset Camera", function()
+        workspace.CurrentCamera:Destroy()
+        wait(0.1)
+        workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
+        workspace.CurrentCamera.CameraType = "Custom"
+        LocalPlayer.CameraMode = Enum.CameraMode.Classic
+    end)
+    
+    -- Appearance Section
+    MakeTopkekLabel("[ Appearance ]")
+    
+    local nameInput = MakeTopkekTextBox(1/2, "Name")
+    MakeTopkekButton(1/2, "Set Overhead Name", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+            for _, v in pairs(LocalPlayer.Character:GetChildren()) do
+                if v:IsA("Model") and v.Name == "NameTag" then
+                    v:Destroy()
+                end
+            end
+            
+            local newName = Instance.new("Model", LocalPlayer.Character)
+            newName.Name = "NameTag"
+            local cl = LocalPlayer.Character.Head:Clone()
+            cl.Parent = newName
+            if cl:FindFirstChild("face") then
+                cl.face:Destroy()
+            end
+            local hum = Instance.new("Humanoid", newName)
+            hum.Name = "NameTag"
+            hum.MaxHealth = 0
+            hum.Health = 0
+            local weld = Instance.new("Weld", cl)
+            weld.Part0 = cl
+            weld.Part1 = LocalPlayer.Character.Head
+            LocalPlayer.Character.Head.Transparency = 1
+            wait(0.5)
+            cl.BrickColor = LocalPlayer.Character.Head.BrickColor
+            
+            local bb = Instance.new("BillboardGui", cl)
+            bb.AlwaysOnTop = true
+            bb.Size = UDim2.new(0, 100, 0, 50)
+            bb.StudsOffset = Vector3.new(0, 1, 0)
+            local tl = Instance.new("TextLabel", bb)
+            tl.BackgroundTransparency = 1
+            tl.Size = UDim2.new(1, 0, 1, 0)
+            tl.Text = nameInput.Text
+            tl.Font = Enum.Font.SourceSansBold
+            tl.TextSize = 24
+            tl.TextColor3 = Color3.new(1, 1, 1)
+            tl.TextStrokeTransparency = 0
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Rainbow Name", function()
+        LocalPlayer.Neutral = false
+        spawn(function()
+            while LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") do
+                LocalPlayer.TeamColor = BrickColor.Random()
+                wait(0.1)
+            end
+        end)
+    end)
+    
+    MakeTopkekButton(1/2, "Clear Appearance", function()
+        LocalPlayer:ClearCharacterAppearance()
+    end)
+    
+    MakeTopkekButton(1/2, "Remove Hats", function()
+        if LocalPlayer.Character then
+            for _, obj in pairs(LocalPlayer.Character:GetChildren()) do
+                if obj:IsA("Accessory") or obj:IsA("Hat") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Remove Face", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+            for _, obj in pairs(LocalPlayer.Character.Head:GetChildren()) do
+                if obj:IsA("Decal") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Block Head", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+            for _, obj in pairs(LocalPlayer.Character.Head:GetChildren()) do
+                if obj:IsA("SpecialMesh") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    
+    -- Animation Section
+    MakeTopkekLabel("[ Animations ]")
+    
+    local animInput = MakeTopkekTextBox(1/2, "Animation ID")
+    MakeTopkekButton(1/2, "Play Animation", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://" .. animInput.Text
+            local track = LocalPlayer.Character.Humanoid:LoadAnimation(anim)
+            track:Play()
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Stop Anims", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            for _, track in pairs(LocalPlayer.Character.Humanoid:GetPlayingAnimationTracks()) do
+                track:Stop()
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Freeze Anims", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            for _, track in pairs(LocalPlayer.Character.Humanoid:GetPlayingAnimationTracks()) do
+                track:AdjustSpeed(0)
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/3, "Resume Anims", function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            for _, track in pairs(LocalPlayer.Character.Humanoid:GetPlayingAnimationTracks()) do
+                track:AdjustSpeed(1)
+            end
+        end
+    end)
+    
+    -- Audio Section
+    MakeTopkekLabel("[ Audio ]")
+    
+    local soundInput = MakeTopkekTextBox(1/3, "Sound ID")
+    MakeTopkekButton(2/3, "Play Sound (Local)", function()
+        local sound = Instance.new("Sound", workspace.CurrentCamera)
+        sound.SoundId = "rbxassetid://" .. soundInput.Text
+        sound.Volume = 1
+        sound:Play()
+        sound.Ended:Connect(function()
+            sound:Destroy()
+        end)
+    end)
+    
+    local volInput = MakeTopkekTextBox(1/3, "1")
+    MakeTopkekButton(2/3, "Set Volume", function()
+        local val = tonumber(volInput.Text)
+        if val then
+            for _, sound in pairs(workspace:GetDescendants()) do
+                if sound:IsA("Sound") then
+                    sound.Volume = val
+                end
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Stop All Sounds", function()
+        for _, sound in pairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then
+                sound:Stop()
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Remove Sounds", function()
+        for _, sound in pairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then
+                sound:Destroy()
+            end
+        end
+    end)
+    
+    -- Utility Section
+    MakeTopkekLabel("[ Utility ]")
+    
+    MakeTopkekButton(1/2, "Rejoin Server", function()
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end)
+    
+    MakeTopkekButton(1/2, "Copy JobId", function()
+        setclipboard(game.JobId)
+    end)
+    
+    MakeTopkekButton(1/2, "Copy PlaceId", function()
+        setclipboard(tostring(game.PlaceId))
+    end)
+    
+    MakeTopkekButton(1/2, "Copy User ID", function()
+        setclipboard(tostring(LocalPlayer.UserId))
+    end)
+    
+    MakeTopkekButton(1/2, "Remove Tools", function()
+        if LocalPlayer.Backpack then
+            for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+                tool:Destroy()
+            end
+        end
+        if LocalPlayer.Character then
+            for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+                if tool:IsA("Tool") then
+                    tool:Destroy()
+                end
+            end
+        end
+    end)
+    
+    MakeTopkekButton(1/2, "Unequip Tools", function()
+        if LocalPlayer.Character then
+            for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+                if tool:IsA("Tool") then
+                    tool.Parent = LocalPlayer.Backpack
+                end
+            end
+        end
+    end)
+    
+    local chatInput = MakeTopkekTextBox(1/2, "Message")
+    MakeTopkekButton(1/2, "Chat", function()
+        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(chatInput.Text, "All")
+    end)
+end
+
+topkekButton.MouseButton1Click:Connect(function()
+    CreateTopk3kGui()
+    Topk3kVisible = not Topk3kVisible
+    Topk3kBase.Visible = Topk3kVisible
+end)
+
+-- ===== CHARACTER RESPAWN HANDLER =====
+local function OnCharacterAdded(char)
+    task.wait(0.1)
+    
+    if getFlyState and getFlyState() then
+        ReinitFly()
+    end
+    
+    if getNoclipState and getNoclipState() then
+        if noclipConn then
+            noclipConn:Disconnect()
+            noclipConn = nil
+        end
+        noclipConn = RunService.Stepped:Connect(function()
+            local c = LocalPlayer.Character
+            if not c then return end
+            
+            for _, part in ipairs(c:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end)
+    end
+    
+    if getInfJumpState and getInfJumpState() then
+        if infJumpConn then
+            infJumpConn:Disconnect()
+            infJumpConn = nil
+        end
+        infJumpConn = UserInputService.JumpRequest:Connect(function()
+            local c = LocalPlayer.Character
+            if not c then return end
+            
+            local hum = c:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    end
+    
+    if getAntiTpState and getAntiTpState() then
+        if antiTpConn then
+            antiTpConn:Disconnect()
+            antiTpConn = nil
+        end
+        lastPos = nil
+        antiTpConn = RunService.Heartbeat:Connect(function()
+            local c = LocalPlayer.Character
+            if not c then return end
+            
+            local hrp = c:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            
+            if lastPos then
+                local delta = hrp.Position - lastPos
+                if delta.Magnitude > 50 then
+                    hrp.CFrame = CFrame.new(lastPos)
+                end
+            end
+            lastPos = hrp.Position
+        end)
+    end
+    
+    if getLoopWsState and getLoopWsState() then
+        originalWalkSpeed = nil
+        if loopWsConn then
+            loopWsConn:Disconnect()
+            loopWsConn = nil
+        end
+        loopWsConn = RunService.Heartbeat:Connect(function()
+            local c = LocalPlayer.Character
+            if not c then return end
+            
+            local hum = c:FindFirstChildOfClass("Humanoid")
+            if hum then
+                if originalWalkSpeed == nil then
+                    originalWalkSpeed = hum.WalkSpeed
+                end
+                hum.WalkSpeed = targetWalkSpeed
+            end
+        end)
+    end
+    
+    stopEmote()
+end
+
+LocalPlayer.CharacterAdded:Connect(OnCharacterAdded)
+LocalPlayer.CharacterRemoving:Connect(function()
+    stopEmote()
+    for plr, _ in pairs(tracerState.players) do
+        clearTracerForPlayer(plr)
+    end
+end)
+
+if LocalPlayer.Character then
+    OnCharacterAdded(LocalPlayer.Character)
+end
+
+print("✅ Mod menu loaded successfully!")
