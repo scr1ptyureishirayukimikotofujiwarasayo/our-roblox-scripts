@@ -691,6 +691,16 @@ end
 local function createTracerGui(plr, char)
 	if not char then return end
 
+	-- Clear existing tracer first to prevent memory leaks
+	if tracerState.players[plr] then
+		if tracerState.players[plr].conn then
+			tracerState.players[plr].conn:Disconnect()
+		end
+		if tracerState.players[plr].gui then
+			tracerState.players[plr].gui:Destroy()
+		end
+	end
+
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then
 		hrp = char:FindFirstChild("Torso")
@@ -822,6 +832,20 @@ LocalPlayer.CharacterRemoving:Connect(function()
 	end
 end)
 
+-- FIX: Recreate tracers when LocalPlayer respawns
+LocalPlayer.CharacterAdded:Connect(function(char)
+	if not tracerEnabled then return end
+	
+	-- Wait for character to fully load
+	char:WaitForChild("HumanoidRootPart", 5)
+	
+	-- Recreate tracers for all players
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			setupTracerForPlayer(plr)
+		end
+	end
+end)
 ----------------------------------------------------------------
 -- Emote
 ----------------------------------------------------------------
