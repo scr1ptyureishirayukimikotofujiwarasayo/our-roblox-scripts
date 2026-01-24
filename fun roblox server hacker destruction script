@@ -1,0 +1,372 @@
+-- ═══════════════════════════════════════════════════════════
+-- █▀▀ █▄█ █▀ ▀█▀ █▀▀ █▀▄▀█   █▀▄ █▀▀ █▀ ▀█▀ █▀█ █░█ █▀▀ ▀█▀
+-- ▄█▄ ░█░ ▄█ ░█░ ██▄ █░▀░█   █▄▀ ██▄ ▄█ ░█░ █▀▄ █▄█ █▄▄ ░█░
+-- ═══════════════════════════════════════════════════════════
+
+-- [INITIALIZATION] Loading malicious payload...
+local SYSTEM_BREACH_ACTIVE = true
+local CORRUPTION_INTENSITY = 1
+
+-- Threat actors database - Legendary Creepypasta Entities
+local Entities = {
+    -- Classic Hackers
+    "SYSTEM_ADMINISTRATOR",
+    "John Doe",
+    "Jane Doe",
+    "TheC0mmun1ty", 
+    "1x1x1x1",
+    "c00lkidd",
+    "Ellernate",
+    "Void",
+    
+    -- Guests
+    "Guest 666",
+    "Guest 0",
+    "Guest -1",
+    "Guest 1337",
+    "The Last Guest",
+    
+    -- Creepypasta Legends
+    "Shedletsky",
+    "MrDoomBringer",
+    "Noli",
+    "Dignity",
+    "Builderman",
+    "Telamon",
+    "Erik.cassel",
+    "ROBLOX",
+    
+    -- Myth Entities
+    "G0Z",
+    "Lezus",
+    "Slenderbot",
+    "BLOX Watch",
+    "Laughing Man",
+    "The Watcher",
+    "ClockworkReaper",
+    "Daemonic_Reaper",
+    
+    -- Corrupted Accounts
+    "RED",
+    "Smile_Dog",
+    "TheC0mmun1tyOwnsYou",
+    "ZeroBrightness",
+    "Quackity",
+    "albertsstuff",
+    
+    -- Horror Entities
+    "The Rake",
+    "SCP-106",
+    "Herobrine",
+    "NULL",
+    "ENTITY_303",
+    "The Intruder",
+    "The Observer",
+    
+    -- Glitch/System
+    "UNKNOWN_ENTITY",
+    "ROOT_ACCESS",
+    ":::VOID::::",
+    ":::ERROR:::",
+    "CORRUPTED_USER",
+    "DELETED_ACCOUNT",
+    "[REDACTED]",
+    "USER_NOT_FOUND",
+    "ADMIN_OVERRIDE",
+    "SYSTEM_32",
+    
+    -- Classic Roblox Myths
+    "Nankurunaisa",
+    "Fearless",
+    "Jaredvaldez4",
+    "Bloxwatch",
+    "Rust_010",
+    "S_M_I_L_E",
+    "The Doctor",
+    "The Wailing Room",
+    "Tubers93",
+    "Kazdam",
+    "EmpireBlox",
+    
+    -- Additional Terror
+    "DeadAccount",
+    "AbandonedUser",
+    "The Glitch",
+    "666_User",
+    "AntiRoblox",
+    "DeletedPlayer",
+    "BannedForever",
+    "TerminatedUser"
+}
+
+-- Corruption symbols matrix
+local Symbols = {
+    "☠️", "☣️", "⚠️", "⛧", "01001", "Ø", "§", "Δ", "666", 
+    "ERROR", "NULL", "█", "▓", "░", "¿", "FATAL", ">>>", 
+    "ACCESS_DENIED", "BREACH", "OVERRIDE"
+}
+
+-- Malicious terminal messages
+local TerminalMessages = {
+    "[CRITICAL] Firewall breached...",
+    "[WARNING] Unauthorized access detected",
+    "[ERROR] System integrity compromised",
+    "[ALERT] Database corruption in progress",
+    "[FATAL] Security protocols disabled",
+    "[BREACH] Root access obtained",
+    "[OVERRIDE] Admin privileges acquired",
+    "[CORRUPTION] Memory leak initiated"
+}
+
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+
+-- Generate corrupted terminal output
+local function getGlitchText()
+    local str = ""
+    local length = math.random(20, 40)
+    for i = 1, length do
+        str = str .. Symbols[math.random(1, #Symbols)]
+        if i % 5 == 0 then str = str .. " " end
+    end
+    return str
+end
+
+-- Generate hacker-style message
+local function getHackerMessage()
+    local templates = {
+        ">>> EXECUTING PAYLOAD... " .. getGlitchText(),
+        "[ROOT@SERVER]# rm -rf /* " .. getGlitchText(),
+        "SYSTEM.DELETE(" .. Entities[math.random(1, #Entities)] .. ")",
+        TerminalMessages[math.random(1, #TerminalMessages)],
+        "ACCESS GRANTED >>> " .. getGlitchText()
+    }
+    return templates[math.random(1, #templates)]
+end
+
+-- Enhanced announcement system
+local function showAnnouncement(text, color, duration)
+    local msg = Instance.new("Message", workspace)
+    msg.Text = text
+    
+    local hint = Instance.new("Hint", workspace)
+    hint.Text = "⚠️ " .. getGlitchText() .. " ⚠️"
+    
+    task.wait(duration or 2.5)
+    msg:Destroy()
+    hint:Destroy()
+end
+
+-- Spawn enhanced threatening NPC
+local function spawnHackerNPC(name)
+    local character = Instance.new("Part", workspace)
+    character.Name = "◢◤" .. name .. "◢◤"
+    character.Size = Vector3.new(4, 6, 1)
+    character.Color = Color3.new(0, 0, 0)
+    character.Material = Enum.Material.ForceField
+    character.CanCollide = false
+    character.Anchored = true
+    character.Transparency = 0.3
+    
+    -- Ominous red glow
+    local light = Instance.new("PointLight", character)
+    light.Color = Color3.new(1, 0, 0)
+    light.Brightness = 10
+    light.Range = 30
+    
+    -- Pulsing effect
+    local tween = TweenService:Create(light, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        Brightness = 2
+    })
+    tween:Play()
+    
+    -- Position near random player
+    local players = game.Players:GetPlayers()
+    if #players > 0 then
+        local target = players[math.random(1, #players)]
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            character.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(math.random(-15, 15), 0, math.random(-15, 15))
+        end
+    end
+    
+    -- Creepy face
+    local face = Instance.new("Decal", character)
+    face.Texture = "rbxassetid://7074786"
+    face.Face = Enum.NormalId.Front
+    
+    -- Billboard GUI with threatening text
+    local billboard = Instance.new("BillboardGui", character)
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "◢ " .. name .. " ◣"
+    label.TextColor3 = Color3.new(1, 0, 0)
+    label.TextScaled = true
+    label.Font = Enum.Font.Code
+    
+    -- Auto-destroy after some time
+    task.delay(15, function()
+        character:Destroy()
+    end)
+end
+
+-- Screen corruption effect
+local function corruptPlayerScreens()
+    for _, player in pairs(game.Players:GetPlayers()) do
+        pcall(function()
+            local gui = Instance.new("ScreenGui", player.PlayerGui)
+            gui.Name = "SYSTEM_CORRUPTION"
+            gui.IgnoreGuiInset = true
+            
+            local frame = Instance.new("Frame", gui)
+            frame.Size = UDim2.new(1, 0, 1, 0)
+            frame.BackgroundColor3 = Color3.new(1, 0, 0)
+            frame.BackgroundTransparency = 0.9
+            frame.BorderSizePixel = 0
+            
+            local glitchText = Instance.new("TextLabel", frame)
+            glitchText.Size = UDim2.new(1, 0, 1, 0)
+            glitchText.BackgroundTransparency = 1
+            glitchText.Text = getGlitchText()
+            glitchText.TextColor3 = Color3.new(1, 0, 0)
+            glitchText.TextScaled = true
+            glitchText.Font = Enum.Font.Code
+            glitchText.TextTransparency = 0.5
+            
+            task.delay(3, function() gui:Destroy() end)
+        end)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- EXECUTION SEQUENCE INITIATED
+-- ═══════════════════════════════════════════════════════════
+
+task.spawn(function()
+    -- PHASE 1: Initial System Breach
+    showAnnouncement("⚠️ UNAUTHORIZED ACCESS DETECTED ⚠️", Color3.new(1, 0, 0), 3)
+    task.wait(1)
+    
+    showAnnouncement(">>> FIREWALL BREACHED <<<", Color3.new(1, 0, 0), 2)
+    task.wait(1)
+    
+    showAnnouncement(">>> INITIATING TOTAL SYSTEM DESTRUCTION <<<", Color3.new(1, 0, 0), 3)
+    task.wait(1)
+    
+    -- PHASE 2: Environmental Corruption Protocol
+    showAnnouncement("[FATAL ERROR] REALITY.EXE HAS STOPPED RESPONDING", Color3.new(1, 0, 0), 3)
+    
+    -- Apocalyptic lighting
+    Lighting.Brightness = 0
+    Lighting.Ambient = Color3.new(0.5, 0, 0)
+    Lighting.OutdoorAmbient = Color3.new(0.3, 0, 0)
+    Lighting.FogEnd = 100
+    Lighting.FogColor = Color3.new(0.2, 0, 0)
+    
+    -- Blood red sky
+    local sky = Instance.new("Sky", Lighting)
+    sky.SkyboxBk = "rbxassetid://263560862"
+    sky.SkyboxDn = "rbxassetid://263560862"
+    sky.SkyboxFt = "rbxassetid://263560862"
+    sky.SkyboxLf = "rbxassetid://263560862"
+    sky.SkyboxRt = "rbxassetid://263560862"
+    sky.SkyboxUp = "rbxassetid://263560862"
+    
+    -- Atmospheric corruption
+    local atmosphere = Instance.new("Atmosphere", Lighting)
+    atmosphere.Density = 0.5
+    atmosphere.Offset = 1
+    atmosphere.Color = Color3.new(0.5, 0, 0)
+    atmosphere.Decay = Color3.new(0.3, 0, 0)
+    atmosphere.Glare = 1
+    atmosphere.Haze = 2
+    
+    task.wait(2)
+    
+    -- PHASE 3: Infinite Corruption Loop
+    local loopCount = 0
+    while SYSTEM_BREACH_ACTIVE do
+        loopCount = loopCount + 1
+        
+        -- Intensify corruption over time
+        if loopCount % 20 == 0 then
+            CORRUPTION_INTENSITY = math.min(CORRUPTION_INTENSITY + 0.1, 3)
+        end
+        
+        -- Spawn threatening entities
+        if math.random(1, 3) == 1 then
+            spawnHackerNPC(Entities[math.random(1, #Entities)])
+        end
+        
+        -- Terminal flood attack
+        pcall(function()
+            local name = Entities[math.random(1, #Entities)]
+            local msg = getHackerMessage()
+            game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(
+                "["..name.."]: "..msg, 
+                "All"
+            )
+        end)
+        
+        -- Environmental destruction
+        for _, part in pairs(workspace:GetChildren()) do
+            pcall(function()
+                if part:IsA("BasePart") and not game.Players:GetPlayerFromCharacter(part.Parent) then
+                    part.BrickColor = BrickColor.new("Really black")
+                    part.Material = Enum.Material.CorrodedMetal
+                    
+                    if math.random(1, 4) == 1 then
+                        part.Anchored = false
+                        part.Velocity = Vector3.new(
+                            math.random(-50, 50), 
+                            math.random(30, 100), 
+                            math.random(-50, 50)
+                        )
+                        part.RotVelocity = Vector3.new(
+                            math.random(-10, 10),
+                            math.random(-10, 10),
+                            math.random(-10, 10)
+                        )
+                    end
+                    
+                    -- Add corruption glow
+                    if math.random(1, 10) == 1 and not part:FindFirstChild("CorruptionGlow") then
+                        local glow = Instance.new("PointLight", part)
+                        glow.Name = "CorruptionGlow"
+                        glow.Color = Color3.new(1, 0, 0)
+                        glow.Brightness = 5
+                        glow.Range = 15
+                    end
+                end
+            end)
+        end
+        
+        -- Periodic screen corruption
+        if loopCount % 10 == 0 then
+            corruptPlayerScreens()
+        end
+        
+        -- Random system messages
+        if math.random(1, 5) == 1 then
+            showAnnouncement(TerminalMessages[math.random(1, #TerminalMessages)], Color3.new(1, 0, 0), 1.5)
+        end
+        
+        -- Lighting flicker for dramatic effect
+        if math.random(1, 8) == 1 then
+            Lighting.Brightness = math.random(0, 2)
+            task.wait(0.1)
+            Lighting.Brightness = 0
+        end
+        
+        task.wait(0.3 / CORRUPTION_INTENSITY)
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════
+-- [STATUS] PAYLOAD DEPLOYED SUCCESSFULLY
+-- [WARNING] POINT OF NO RETURN EXCEEDED
+-- ═══════════════════════════════════════════════════════════
