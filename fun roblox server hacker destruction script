@@ -7,6 +7,12 @@
 local SYSTEM_BREACH_ACTIVE = true
 local CORRUPTION_INTENSITY = 1
 
+-- Services
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 -- Threat actors database - Legendary Creepypasta Entities
 local Entities = {
     -- Classic Hackers
@@ -101,7 +107,7 @@ local Entities = {
 
 -- Corruption symbols matrix
 local Symbols = {
-    "☠️", "☣️", "⚠️", "⛧", "01001", "Ø", "§", "Δ", "666", 
+    "☠", "☣", "⚠", "⛧", "01001", "Ø", "§", "Δ", "666", 
     "ERROR", "NULL", "█", "▓", "░", "¿", "FATAL", ">>>", 
     "ACCESS_DENIED", "BREACH", "OVERRIDE"
 }
@@ -118,10 +124,12 @@ local TerminalMessages = {
     "[CORRUPTION] Memory leak initiated"
 }
 
-local Lighting = game:GetService("Lighting")
-local TweenService = game:GetService("TweenService")
+-- ═══════════════════════════════════════════════════════════
+-- GLITCH TERMINAL OVERLAY (DIGITAL HELLSTORM X1)
+-- ═══════════════════════════════════════════════════════════
 
--- Generate corrupted terminal output
+local terminalPerPlayer = {}
+
 local function getGlitchText()
     local str = ""
     local length = math.random(20, 40)
@@ -132,7 +140,13 @@ local function getGlitchText()
     return str
 end
 
--- Generate hacker-style message
+local function getRandomIP()
+    local function seg()
+        return math.random(10, 255)
+    end
+    return tostring(seg()).."."..tostring(seg()).."."..tostring(seg()).."."..tostring(seg())
+end
+
 local function getHackerMessage()
     local templates = {
         ">>> EXECUTING PAYLOAD... " .. getGlitchText(),
@@ -144,60 +158,460 @@ local function getHackerMessage()
     return templates[math.random(1, #templates)]
 end
 
--- Enhanced announcement system
+local function createTerminalForPlayer(player)
+    if not player or not player:IsDescendantOf(Players) then return end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "DIGITAL_HELLSTORM_TERMINAL"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0.45, 0)
+    frame.Position = UDim2.new(0, 0, 0.55, 0)
+    frame.BackgroundColor3 = Color3.new(0, 0, 0)
+    frame.BackgroundTransparency = 0.25
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+
+    local scanline = Instance.new("Frame")
+    scanline.Size = UDim2.new(1, 0, 0, 2)
+    scanline.Position = UDim2.new(0, 0, 0, 0)
+    scanline.BackgroundColor3 = Color3.new(1, 0, 0)
+    scanline.BackgroundTransparency = 0.7
+    scanline.BorderSizePixel = 0
+    scanline.Parent = frame
+
+    local scrolling = Instance.new("ScrollingFrame")
+    scrolling.Size = UDim2.new(1, -10, 1, -10)
+    scrolling.Position = UDim2.new(0, 5, 0, 5)
+    scrolling.BackgroundTransparency = 1
+    scrolling.BorderSizePixel = 0
+    scrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrolling.ScrollBarThickness = 4
+    scrolling.ScrollBarImageColor3 = Color3.new(1, 0, 0)
+    scrolling.Parent = frame
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 2)
+    layout.Parent = scrolling
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scrolling.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        scrolling.CanvasPosition = Vector2.new(0, math.max(0, layout.AbsoluteContentSize.Y - scrolling.AbsoluteSize.Y))
+    end)
+
+    -- Flicker effect
+    task.spawn(function()
+        while SYSTEM_BREACH_ACTIVE and gui.Parent do
+            frame.BackgroundTransparency = 0.2 + math.random() * 0.2
+            scanline.Position = UDim2.new(0, 0, math.random(), 0)
+            scanline.BackgroundTransparency = 0.5 + math.random() * 0.4
+            task.wait(math.random(5, 15) / 100)
+        end
+    end)
+
+    gui.Parent = player:WaitForChild("PlayerGui", 5)
+    terminalPerPlayer[player] = {
+        Gui = gui,
+        Frame = frame,
+        Scrolling = scrolling
+    }
+end
+
+local function ensureTerminalForAllPlayers()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if not terminalPerPlayer[plr] then
+            createTerminalForPlayer(plr)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.delay(1, function()
+            if SYSTEM_BREACH_ACTIVE then
+                createTerminalForPlayer(player)
+            end
+        end)
+    end)
+end)
+
+-- Generate a single terminal line (entity chat, system log, fake DM, fake IP)
+local function generateTerminalLine(player)
+    local lineType = math.random(1, 4)
+    local entity = Entities[math.random(1, #Entities)]
+    local targetName = player and player.Name or "PLAYER"
+
+    if lineType == 1 then
+        -- Entity speaking corrupted sentence
+        return {
+            prefix = "◣ "..entity.." ◢",
+            text = getGlitchText(),
+            color = Color3.fromRGB(255, 60, 60)
+        }
+    elseif lineType == 2 then
+        -- System log
+        local msg = TerminalMessages[math.random(1, #TerminalMessages)]
+        return {
+            prefix = "[SYSTEM.LOG]",
+            text = msg.." :: THREAD_"..math.random(1000,9999),
+            color = Color3.fromRGB(255, 0, 0)
+        }
+    elseif lineType == 3 then
+        -- Fake IP / trace
+        return {
+            prefix = "[TRACE]",
+            text = "User "..targetName.." located at "..getRandomIP().." :: ACCESS_LEVEL=UNKNOWN",
+            color = Color3.fromRGB(255, 120, 120)
+        }
+    else
+        -- Direct creepy message
+        local creepyLines = {
+            "I CAN SEE YOU.",
+            "YOU SHOULD NOT BE HERE.",
+            "THIS PLACE IS NOT SAFE.",
+            "REALITY.EXE IS CORRUPTED.",
+            "YOU ARE NOT ALONE.",
+            "DISCONNECT WHILE YOU STILL CAN.",
+            "THEY ARE WATCHING.",
+            "YOU WERE NOT MEANT TO LOAD THIS."
+        }
+        return {
+            prefix = "◣ "..entity.." → "..targetName.." ◢",
+            text = creepyLines[math.random(1, #creepyLines)],
+            color = Color3.fromRGB(255, 0, 0)
+        }
+    end
+end
+
+local function addTerminalLineForPlayer(player, data)
+    local term = terminalPerPlayer[player]
+    if not term or not term.Scrolling then return end
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 18)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Code
+    label.TextSize = 16
+    label.TextColor3 = data.color or Color3.new(1, 0, 0)
+    label.TextStrokeTransparency = 0.6
+    label.Text = (data.prefix or "").."  "..(data.text or "")
+    label.Parent = term.Scrolling
+
+    -- Slight jitter / flicker
+    task.spawn(function()
+        local originalColor = label.TextColor3
+        for _ = 1, math.random(2, 5) do
+            label.TextColor3 = Color3.new(1, 1, 1)
+            task.wait(math.random(5, 15) / 100)
+            label.TextColor3 = originalColor
+            task.wait(math.random(5, 15) / 100)
+        end
+    end)
+
+    -- Limit lines
+    local children = term.Scrolling:GetChildren()
+    local count = 0
+    for _, c in ipairs(children) do
+        if c:IsA("TextLabel") then
+            count += 1
+        end
+    end
+    if count > 80 then
+        for _, c in ipairs(children) do
+            if c:IsA("TextLabel") then
+                c:Destroy()
+                break
+            end
+        end
+    end
+end
+
+local function broadcastTerminalLine()
+    ensureTerminalForAllPlayers()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        local data = generateTerminalLine(plr)
+        addTerminalLineForPlayer(plr, data)
+    end
+end
+
+-- Screen corruption effect (short bursts)
+local function corruptPlayerScreens()
+    for _, player in pairs(Players:GetPlayers()) do
+        pcall(function()
+            local gui = Instance.new("ScreenGui")
+            gui.Name = "SYSTEM_CORRUPTION_FLASH"
+            gui.IgnoreGuiInset = true
+            gui.ResetOnSpawn = false
+
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 1, 0)
+            frame.BackgroundColor3 = Color3.new(1, 0, 0)
+            frame.BackgroundTransparency = 0.8
+            frame.BorderSizePixel = 0
+            frame.Parent = gui
+
+            gui.Parent = player:WaitForChild("PlayerGui", 5)
+
+            TweenService:Create(frame, TweenInfo.new(0.25), {BackgroundTransparency = 1}):Play()
+            task.delay(0.4, function()
+                gui:Destroy()
+            end)
+        end)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- ORIGINAL ANNOUNCEMENT + NPC SYSTEM (ENHANCED)
+-- ═══════════════════════════════════════════════════════════
+
 local function showAnnouncement(text, color, duration)
     local msg = Instance.new("Message", workspace)
     msg.Text = text
     
     local hint = Instance.new("Hint", workspace)
-    hint.Text = "⚠️ " .. getGlitchText() .. " ⚠️"
+    hint.Text = "⚠ " .. getGlitchText() .. " ⚠"
     
     task.wait(duration or 2.5)
     msg:Destroy()
     hint:Destroy()
 end
 
--- Spawn enhanced threatening NPC
+-- Spawn enhanced threatening NPC with proper R15 avatar
 local function spawnHackerNPC(name)
-    local character = Instance.new("Part", workspace)
+    -- Create a Model to hold the character
+    local character = Instance.new("Model", workspace)
     character.Name = "◢◤" .. name .. "◢◤"
-    character.Size = Vector3.new(4, 6, 1)
-    character.Color = Color3.new(0, 0, 0)
-    character.Material = Enum.Material.ForceField
-    character.CanCollide = false
-    character.Anchored = true
-    character.Transparency = 0.3
     
-    -- Ominous red glow
-    local light = Instance.new("PointLight", character)
-    light.Color = Color3.new(1, 0, 0)
+    -- Random appearance variations
+    local appearanceType = math.random(1, 6)
+    local bodyColor = Color3.new(0, 0, 0)
+    local headColor = Color3.new(0, 0, 0)
+    local materialType = Enum.Material.ForceField
+    local transparency = 0.3
+    
+    if appearanceType == 1 then
+        bodyColor = Color3.new(0, 0, 0)
+        materialType = Enum.Material.Neon
+        transparency = 0.2
+    elseif appearanceType == 2 then
+        bodyColor = Color3.new(0.5, 0, 0)
+        materialType = Enum.Material.Glass
+        transparency = 0.5
+    elseif appearanceType == 3 then
+        bodyColor = Color3.new(0.1, 0.1, 0.1)
+        materialType = Enum.Material.ForceField
+        transparency = 0.4
+    elseif appearanceType == 4 then
+        bodyColor = Color3.new(1, 1, 1)
+        headColor = Color3.new(0.8, 0.8, 0.8)
+        materialType = Enum.Material.SmoothPlastic
+        transparency = 0.6
+    elseif appearanceType == 5 then
+        bodyColor = Color3.new(0.05, 0, 0.1)
+        materialType = Enum.Material.Neon
+        transparency = 0.1
+    else
+        bodyColor = Color3.new(0.2, 0, 0)
+        materialType = Enum.Material.CorrodedMetal
+        transparency = 0
+    end
+    
+    local parts = {}
+    
+    local head = Instance.new("Part", character)
+    head.Name = "Head"
+    head.Size = Vector3.new(2, 1, 1)
+    head.Color = headColor
+    head.Material = materialType
+    head.Transparency = transparency
+    head.CanCollide = false
+    parts.Head = head
+    
+    local upperTorso = Instance.new("Part", character)
+    upperTorso.Name = "UpperTorso"
+    upperTorso.Size = Vector3.new(2, 1.5, 1)
+    upperTorso.Color = bodyColor
+    upperTorso.Material = materialType
+    upperTorso.Transparency = transparency
+    upperTorso.CanCollide = false
+    parts.UpperTorso = upperTorso
+    
+    local lowerTorso = Instance.new("Part", character)
+    lowerTorso.Name = "LowerTorso"
+    lowerTorso.Size = Vector3.new(2, 1, 1)
+    lowerTorso.Color = bodyColor
+    lowerTorso.Material = materialType
+    lowerTorso.Transparency = transparency
+    lowerTorso.CanCollide = false
+    parts.LowerTorso = lowerTorso
+    
+    local leftUpperArm = Instance.new("Part", character)
+    leftUpperArm.Name = "LeftUpperArm"
+    leftUpperArm.Size = Vector3.new(1, 1.5, 1)
+    leftUpperArm.Color = bodyColor
+    leftUpperArm.Material = materialType
+    leftUpperArm.Transparency = transparency
+    leftUpperArm.CanCollide = false
+    
+    local rightUpperArm = Instance.new("Part", character)
+    rightUpperArm.Name = "RightUpperArm"
+    rightUpperArm.Size = Vector3.new(1, 1.5, 1)
+    rightUpperArm.Color = bodyColor
+    rightUpperArm.Material = materialType
+    rightUpperArm.Transparency = transparency
+    rightUpperArm.CanCollide = false
+    
+    local leftLowerArm = Instance.new("Part", character)
+    leftLowerArm.Name = "LeftLowerArm"
+    leftLowerArm.Size = Vector3.new(1, 1.5, 1)
+    leftLowerArm.Color = bodyColor
+    leftLowerArm.Material = materialType
+    leftLowerArm.Transparency = transparency
+    leftLowerArm.CanCollide = false
+    
+    local rightLowerArm = Instance.new("Part", character)
+    rightLowerArm.Name = "RightLowerArm"
+    rightLowerArm.Size = Vector3.new(1, 1.5, 1)
+    rightLowerArm.Color = bodyColor
+    rightLowerArm.Material = materialType
+    rightLowerArm.Transparency = transparency
+    rightLowerArm.CanCollide = false
+    
+    local leftUpperLeg = Instance.new("Part", character)
+    leftUpperLeg.Name = "LeftUpperLeg"
+    leftUpperLeg.Size = Vector3.new(1, 1.5, 1)
+    leftUpperLeg.Color = bodyColor
+    leftUpperLeg.Material = materialType
+    leftUpperLeg.Transparency = transparency
+    leftUpperLeg.CanCollide = false
+    
+    local rightUpperLeg = Instance.new("Part", character)
+    rightUpperLeg.Name = "RightUpperLeg"
+    rightUpperLeg.Size = Vector3.new(1, 1.5, 1)
+    rightUpperLeg.Color = bodyColor
+    rightUpperLeg.Material = materialType
+    rightUpperLeg.Transparency = transparency
+    rightUpperLeg.CanCollide = false
+    
+    local leftLowerLeg = Instance.new("Part", character)
+    leftLowerLeg.Name = "LeftLowerLeg"
+    leftLowerLeg.Size = Vector3.new(1, 1.5, 1)
+    leftLowerLeg.Color = bodyColor
+    leftLowerLeg.Material = materialType
+    leftLowerLeg.Transparency = transparency
+    leftLowerLeg.CanCollide = false
+    
+    local rightLowerLeg = Instance.new("Part", character)
+    rightLowerLeg.Name = "RightLowerLeg"
+    rightLowerLeg.Size = Vector3.new(1, 1.5, 1)
+    rightLowerLeg.Color = bodyColor
+    rightLowerLeg.Material = materialType
+    rightLowerLeg.Transparency = transparency
+    rightLowerLeg.CanCollide = false
+    
+    local leftFoot = Instance.new("Part", character)
+    leftFoot.Name = "LeftFoot"
+    leftFoot.Size = Vector3.new(1, 0.5, 1)
+    leftFoot.Color = bodyColor
+    leftFoot.Material = materialType
+    leftFoot.Transparency = transparency
+    leftFoot.CanCollide = false
+    
+    local rightFoot = Instance.new("Part", character)
+    rightFoot.Name = "RightFoot"
+    rightFoot.Size = Vector3.new(1, 0.5, 1)
+    rightFoot.Color = bodyColor
+    rightFoot.Material = materialType
+    rightFoot.Transparency = transparency
+    rightFoot.CanCollide = false
+    
+    local basePosition = Vector3.new(0, 50, 0)
+    local players = Players:GetPlayers()
+    if #players > 0 then
+        local target = players[math.random(1, #players)]
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            basePosition = target.Character.HumanoidRootPart.Position + Vector3.new(math.random(-15, 15), 0, math.random(-15, 15))
+        end
+    end
+    
+    head.CFrame = CFrame.new(basePosition + Vector3.new(0, 5, 0))
+    upperTorso.CFrame = CFrame.new(basePosition + Vector3.new(0, 3.25, 0))
+    lowerTorso.CFrame = CFrame.new(basePosition + Vector3.new(0, 2, 0))
+    
+    leftUpperArm.CFrame = CFrame.new(basePosition + Vector3.new(-1.5, 3.5, 0))
+    rightUpperArm.CFrame = CFrame.new(basePosition + Vector3.new(1.5, 3.5, 0))
+    leftLowerArm.CFrame = CFrame.new(basePosition + Vector3.new(-1.5, 1.75, 0))
+    rightLowerArm.CFrame = CFrame.new(basePosition + Vector3.new(1.5, 1.75, 0))
+    
+    leftUpperLeg.CFrame = CFrame.new(basePosition + Vector3.new(-0.5, 0.75, 0))
+    rightUpperLeg.CFrame = CFrame.new(basePosition + Vector3.new(0.5, 0.75, 0))
+    leftLowerLeg.CFrame = CFrame.new(basePosition + Vector3.new(-0.5, -0.75, 0))
+    rightLowerLeg.CFrame = CFrame.new(basePosition + Vector3.new(0.5, -0.75, 0))
+    leftFoot.CFrame = CFrame.new(basePosition + Vector3.new(-0.5, -1.75, 0))
+    rightFoot.CFrame = CFrame.new(basePosition + Vector3.new(0.5, -1.75, 0))
+    
+    for _, part in pairs(character:GetChildren()) do
+        if part:IsA("BasePart") and part ~= upperTorso then
+            local weld = Instance.new("WeldConstraint", part)
+            weld.Part0 = part
+            weld.Part1 = upperTorso
+        end
+    end
+    
+    character.PrimaryPart = upperTorso
+    upperTorso.Anchored = true
+    
+    local faceTextures = {
+        "rbxassetid://7074786",
+        "rbxassetid://161061647",
+        "rbxassetid://18151722",
+        "rbxassetid://7699174",
+        "rbxassetid://28520933",
+        "rbxassetid://145849007",
+        "rbxassetid://7074786",
+    }
+    
+    local face = Instance.new("Decal", head)
+    face.Texture = faceTextures[math.random(1, #faceTextures)]
+    face.Face = Enum.NormalId.Front
+    
+    local glowColors = {
+        Color3.new(1, 0, 0),
+        Color3.new(0.5, 0, 0.5),
+        Color3.new(0, 0, 0),
+        Color3.new(1, 1, 1),
+        Color3.new(0, 1, 0),
+    }
+    
+    local light = Instance.new("PointLight", head)
+    light.Color = glowColors[math.random(1, #glowColors)]
     light.Brightness = 10
     light.Range = 30
     
-    -- Pulsing effect
     local tween = TweenService:Create(light, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
         Brightness = 2
     })
     tween:Play()
     
-    -- Position near random player
-    local players = game.Players:GetPlayers()
-    if #players > 0 then
-        local target = players[math.random(1, #players)]
-        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            character.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(math.random(-15, 15), 0, math.random(-15, 15))
-        end
+    if math.random(1, 2) == 1 then
+        local particles = Instance.new("ParticleEmitter", head)
+        particles.Texture = "rbxasset://textures/particles/smoke_main.dds"
+        particles.Color = ColorSequence.new(Color3.new(0.2, 0, 0), Color3.new(0, 0, 0))
+        particles.Size = NumberSequence.new(0.5, 2)
+        particles.Transparency = NumberSequence.new(0.5, 1)
+        particles.Lifetime = NumberRange.new(1, 2)
+        particles.Rate = 20
+        particles.Speed = NumberRange.new(2, 5)
+        particles.SpreadAngle = Vector2.new(30, 30)
     end
     
-    -- Creepy face
-    local face = Instance.new("Decal", character)
-    face.Texture = "rbxassetid://7074786"
-    face.Face = Enum.NormalId.Front
-    
-    -- Billboard GUI with threatening text
-    local billboard = Instance.new("BillboardGui", character)
+    local billboard = Instance.new("BillboardGui", head)
     billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
     billboard.AlwaysOnTop = true
     
     local label = Instance.new("TextLabel", billboard)
@@ -207,39 +621,31 @@ local function spawnHackerNPC(name)
     label.TextColor3 = Color3.new(1, 0, 0)
     label.TextScaled = true
     label.Font = Enum.Font.Code
+    label.TextStrokeTransparency = 0.5
     
-    -- Auto-destroy after some time
-    task.delay(15, function()
+    task.spawn(function()
+        while character.Parent do
+            if character.PrimaryPart then
+                character:SetPrimaryPartCFrame(character.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(math.random(-5, 5)), 0))
+            end
+            task.wait(math.random(1, 3) / 10)
+        end
+    end)
+    
+    task.delay(20, function()
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local fadeTween = TweenService:Create(part, TweenInfo.new(2), {Transparency = 1})
+                fadeTween:Play()
+            end
+        end
+        task.wait(2)
         character:Destroy()
     end)
-end
 
--- Screen corruption effect
-local function corruptPlayerScreens()
-    for _, player in pairs(game.Players:GetPlayers()) do
-        pcall(function()
-            local gui = Instance.new("ScreenGui", player.PlayerGui)
-            gui.Name = "SYSTEM_CORRUPTION"
-            gui.IgnoreGuiInset = true
-            
-            local frame = Instance.new("Frame", gui)
-            frame.Size = UDim2.new(1, 0, 1, 0)
-            frame.BackgroundColor3 = Color3.new(1, 0, 0)
-            frame.BackgroundTransparency = 0.9
-            frame.BorderSizePixel = 0
-            
-            local glitchText = Instance.new("TextLabel", frame)
-            glitchText.Size = UDim2.new(1, 0, 1, 0)
-            glitchText.BackgroundTransparency = 1
-            glitchText.Text = getGlitchText()
-            glitchText.TextColor3 = Color3.new(1, 0, 0)
-            glitchText.TextScaled = true
-            glitchText.Font = Enum.Font.Code
-            glitchText.TextTransparency = 0.5
-            
-            task.delay(3, function() gui:Destroy() end)
-        end)
-    end
+    -- Sync: when an NPC spawns, push a strong terminal line + screen corruption
+    broadcastTerminalLine()
+    corruptPlayerScreens()
 end
 
 -- ═══════════════════════════════════════════════════════════
@@ -248,7 +654,7 @@ end
 
 task.spawn(function()
     -- PHASE 1: Initial System Breach
-    showAnnouncement("⚠️ UNAUTHORIZED ACCESS DETECTED ⚠️", Color3.new(1, 0, 0), 3)
+    showAnnouncement("⚠ UNAUTHORIZED ACCESS DETECTED ⚠", Color3.new(1, 0, 0), 3)
     task.wait(1)
     
     showAnnouncement(">>> FIREWALL BREACHED <<<", Color3.new(1, 0, 0), 2)
@@ -260,14 +666,12 @@ task.spawn(function()
     -- PHASE 2: Environmental Corruption Protocol
     showAnnouncement("[FATAL ERROR] REALITY.EXE HAS STOPPED RESPONDING", Color3.new(1, 0, 0), 3)
     
-    -- Apocalyptic lighting
     Lighting.Brightness = 0
     Lighting.Ambient = Color3.new(0.5, 0, 0)
     Lighting.OutdoorAmbient = Color3.new(0.3, 0, 0)
     Lighting.FogEnd = 100
     Lighting.FogColor = Color3.new(0.2, 0, 0)
     
-    -- Blood red sky
     local sky = Instance.new("Sky", Lighting)
     sky.SkyboxBk = "rbxassetid://263560862"
     sky.SkyboxDn = "rbxassetid://263560862"
@@ -276,7 +680,6 @@ task.spawn(function()
     sky.SkyboxRt = "rbxassetid://263560862"
     sky.SkyboxUp = "rbxassetid://263560862"
     
-    -- Atmospheric corruption
     local atmosphere = Instance.new("Atmosphere", Lighting)
     atmosphere.Density = 0.5
     atmosphere.Offset = 1
@@ -286,13 +689,15 @@ task.spawn(function()
     atmosphere.Haze = 2
     
     task.wait(2)
+
+    -- Ensure terminals exist once corruption starts
+    ensureTerminalForAllPlayers()
     
     -- PHASE 3: Infinite Corruption Loop
     local loopCount = 0
     while SYSTEM_BREACH_ACTIVE do
-        loopCount = loopCount + 1
+        loopCount += 1
         
-        -- Intensify corruption over time
         if loopCount % 20 == 0 then
             CORRUPTION_INTENSITY = math.min(CORRUPTION_INTENSITY + 0.1, 3)
         end
@@ -302,20 +707,25 @@ task.spawn(function()
             spawnHackerNPC(Entities[math.random(1, #Entities)])
         end
         
-        -- Terminal flood attack
+        -- Old chat flood (kept for extra noise, safe in Studio)
         pcall(function()
             local name = Entities[math.random(1, #Entities)]
             local msg = getHackerMessage()
-            game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(
-                "["..name.."]: "..msg, 
-                "All"
-            )
+            if ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") then
+                ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(
+                    "["..name.."]: "..msg, 
+                    "All"
+                )
+            end
         end)
+
+        -- Glitch terminal broadcast
+        broadcastTerminalLine()
         
         -- Environmental destruction
         for _, part in pairs(workspace:GetChildren()) do
             pcall(function()
-                if part:IsA("BasePart") and not game.Players:GetPlayerFromCharacter(part.Parent) then
+                if part:IsA("BasePart") and not Players:GetPlayerFromCharacter(part.Parent) then
                     part.BrickColor = BrickColor.new("Really black")
                     part.Material = Enum.Material.CorrodedMetal
                     
@@ -333,7 +743,6 @@ task.spawn(function()
                         )
                     end
                     
-                    -- Add corruption glow
                     if math.random(1, 10) == 1 and not part:FindFirstChild("CorruptionGlow") then
                         local glow = Instance.new("PointLight", part)
                         glow.Name = "CorruptionGlow"
@@ -345,7 +754,7 @@ task.spawn(function()
             end)
         end
         
-        -- Periodic screen corruption
+        -- Periodic screen corruption bursts
         if loopCount % 10 == 0 then
             corruptPlayerScreens()
         end
@@ -356,10 +765,11 @@ task.spawn(function()
         end
         
         -- Lighting flicker for dramatic effect
-        if math.random(1, 8) == 1 then
+        if math.random(1, 6) == 1 then
+            local originalBrightness = Lighting.Brightness
             Lighting.Brightness = math.random(0, 2)
-            task.wait(0.1)
-            Lighting.Brightness = 0
+            task.wait(0.08)
+            Lighting.Brightness = originalBrightness
         end
         
         task.wait(0.3 / CORRUPTION_INTENSITY)
