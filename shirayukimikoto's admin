@@ -1,0 +1,707 @@
+-- Personal Admin Commands v6.0 (Self-Only, Tested)
+local p=game:GetService("Players").LocalPlayer
+local rs=game:GetService("RunService")
+local uis=game:GetService("UserInputService")
+local l=game:GetService("Lighting")
+local ts=game:GetService("TeleportService")
+local ws=workspace
+local pfx=";"
+
+local v={active=true,noclip=false,infjump=false,fly=false,flyspeed=1,spin=false,freeze=false,savedPos=nil,rotateSpeed=20}
+local conns={}
+local function track(c)table.insert(conns,c)return c end
+
+repeat wait()until p.Character
+local function char()return p.Character end
+local function hum()return char() and char():FindFirstChildOfClass("Humanoid")end
+local function hrp()return char() and char():FindFirstChild("HumanoidRootPart")end
+
+local sg=Instance.new("ScreenGui")
+sg.Name="AdminUI"
+sg.ResetOnSpawn=false
+sg.Parent=p:WaitForChild("PlayerGui")
+
+local mf=Instance.new("Frame")
+mf.BackgroundColor3=Color3.new(.3,.1,.1)
+mf.BackgroundTransparency=.2
+mf.Position=UDim2.new(.5,-100,0,-60)
+mf.Size=UDim2.new(0,200,0,45)
+mf.Active=true
+mf.Draggable=true
+mf.Parent=sg
+
+local cb=Instance.new("TextBox")
+cb.Size=UDim2.new(.9,0,.6,0)
+cb.Position=UDim2.new(.05,0,.2,0)
+cb.BackgroundColor3=Color3.fromRGB(20,20,20)
+cb.TextColor3=Color3.new(1,1,1)
+cb.Font=Enum.Font.SourceSans
+cb.TextSize=14
+cb.PlaceholderText="Press ; to type..."
+cb.Text=""
+cb.ClearTextOnFocus=false
+cb.Parent=mf
+
+local lf=Instance.new("Frame")
+lf.BackgroundColor3=Color3.new(.2,.2,.25)
+lf.Size=UDim2.new(0,300,0,400)
+lf.Position=UDim2.new(.5,-150,.5,-200)
+lf.Visible=false
+lf.Active=true
+lf.Draggable=true
+lf.Parent=sg
+
+local sc=Instance.new("ScrollingFrame")
+sc.Size=UDim2.new(1,0,0.9,0)
+sc.Position=UDim2.new(0,0,0.1,0)
+sc.CanvasSize=UDim2.new(0,0,8,0)
+sc.BackgroundTransparency=1
+sc.Parent=lf
+
+local ll=Instance.new("TextLabel")
+ll.Size=UDim2.new(1,-10,1,0)
+ll.BackgroundTransparency=1
+ll.TextColor3=Color3.new(1,1,1)
+ll.TextSize=12
+ll.TextXAlignment=Enum.TextXAlignment.Left
+ll.TextYAlignment=Enum.TextYAlignment.Top
+ll.Font=Enum.Font.Code
+ll.TextWrapped=true
+ll.Parent=sc
+
+local cl=Instance.new("TextButton")
+cl.Size=UDim2.new(0,30,0,30)
+cl.Position=UDim2.new(1,-35,0,5)
+cl.Text="X"
+cl.BackgroundColor3=Color3.new(.7,0,0)
+cl.TextColor3=Color3.new(1,1,1)
+cl.Font=Enum.Font.SourceSansBold
+cl.TextSize=18
+cl.Parent=lf
+
+local cmds={}
+local cmdTxt="--- Personal Admin (Self-Only) ---\n\n"
+
+local function add(n,a,d,f)
+	cmds[n]=f
+	for _,x in pairs(a)do 
+		cmds[x]=f 
+	end 
+	cmdTxt=cmdTxt.."["..n.."] "..d.."\n"
+end
+
+-- MOVEMENT COMMANDS
+add("ws",{"speed","walkspeed"},"Walkspeed [number]",function(a)
+	local h=hum()
+	if h then 
+		h.WalkSpeed=tonumber(a[1])or 16 
+	end 
+end)
+
+add("jp",{"jumppower"},"Jumppower [number]",function(a)
+	local h=hum()
+	if h then 
+		h.JumpPower=tonumber(a[1])or 50
+		h.UseJumpPower=true
+	end 
+end)
+
+add("fly",{"f"},"Enable fly (WASD)",function()
+	v.fly=true 
+	print("Fly enabled")
+end)
+
+add("unfly",{"unf","nofly"},"Disable fly",function()
+	v.fly=false
+	print("Fly disabled")
+end)
+
+add("flyspeed",{"fs"},"Fly speed [number]",function(a)
+	v.flyspeed=tonumber(a[1])or 1
+	print("Fly speed: "..v.flyspeed)
+end)
+
+add("noclip",{"nc"},"Walk through walls",function()
+	v.noclip=true
+	print("Noclip enabled")
+end)
+
+add("clip",{"unnoclip","unc"},"Disable noclip",function()
+	v.noclip=false
+	print("Noclip disabled")
+end)
+
+add("infjump",{"ij"},"Infinite jump",function()
+	v.infjump=true
+	print("Infinite jump enabled")
+end)
+
+add("uninfjump",{"unij","noinfjump"},"Disable infinite jump",function()
+	v.infjump=false
+	print("Infinite jump disabled")
+end)
+
+add("sit",{},"Make character sit",function()
+	local h=hum()
+	if h then 
+		h.Sit=true 
+	end 
+end)
+
+add("jump",{},"Force jump",function()
+	local h=hum()
+	if h then 
+		h.Jump=true 
+	end 
+end)
+
+add("freeze",{"fr"},"Freeze in place",function()
+	v.freeze=true
+	print("Frozen")
+end)
+
+add("thaw",{"unfreeze","unfr"},"Unfreeze",function()
+	v.freeze=false
+	print("Unfrozen")
+end)
+
+add("hh",{"hipheight"},"Hip height [number]",function(a)
+	local h=hum()
+	if h then 
+		h.HipHeight=tonumber(a[1])or 0 
+	end 
+end)
+
+-- TELEPORT COMMANDS
+add("savepos",{"spos"},"Save current position",function()
+	local r=hrp()
+	if r then 
+		v.savedPos=r.CFrame
+		print("Position saved")
+	end 
+end)
+
+add("loadpos",{"lpos"},"Load saved position",function()
+	local r=hrp()
+	if v.savedPos and r then 
+		r.CFrame=v.savedPos
+		print("Position loaded")
+	end 
+end)
+
+add("tp",{"teleport"},"TP to coords [x] [y] [z]",function(a)
+	local r=hrp()
+	if r then 
+		r.CFrame=CFrame.new(tonumber(a[1])or 0,tonumber(a[2])or 10,tonumber(a[3])or 0)
+	end 
+end)
+
+add("spawn",{"tospawn"},"TP to spawn (0,10,0)",function()
+	local r=hrp()
+	if r then 
+		r.CFrame=CFrame.new(0,10,0)
+	end 
+end)
+
+-- CHARACTER COMMANDS
+add("reset",{"re"},"Reset character",function()
+	local c=char()
+	if c then 
+		c:BreakJoints()
+	end 
+end)
+
+add("refresh",{"respawn"},"Respawn at current pos",function()
+	local c=char()
+	if c then
+		local pos=hrp().CFrame
+		c:BreakJoints()
+		p.CharacterAdded:Wait()
+		wait(0.1)
+		repeat wait()until hrp()
+		hrp().CFrame=pos
+	end 
+end)
+
+add("god",{"godmode"},"God mode (infinite health)",function()
+	local h=hum()
+	if h then 
+		h.MaxHealth=math.huge
+		h.Health=math.huge
+		print("God mode enabled")
+	end 
+end)
+
+add("ungod",{"nogod"},"Disable god mode",function()
+	local h=hum()
+	if h then 
+		h.MaxHealth=100
+		h.Health=100
+		print("God mode disabled")
+	end 
+end)
+
+add("heal",{},"Heal to full health",function()
+	local h=hum()
+	if h then 
+		h.Health=h.MaxHealth
+		print("Healed")
+	end 
+end)
+
+add("damage",{"dmg"},"Take damage [number]",function(a)
+	local h=hum()
+	if h then 
+		h.Health=h.Health-(tonumber(a[1])or 10)
+	end 
+end)
+
+add("spin",{},"Spin character",function()
+	v.spin=true
+	print("Spinning")
+end)
+
+add("unspin",{"nospin"},"Stop spinning",function()
+	v.spin=false
+	print("Spin stopped")
+end)
+
+add("spinspeed",{"ss"},"Spin speed [number]",function(a)
+	v.rotateSpeed=tonumber(a[1])or 20
+end)
+
+add("invisible",{"invis"},"Become invisible",function()
+	local c=char()
+	if c then 
+		for _,x in pairs(c:GetDescendants())do 
+			if x:IsA("BasePart")then 
+				x.Transparency=1 
+			end
+			if x:IsA("Decal")then 
+				x.Transparency=1 
+			end
+		end
+		print("Invisible")
+	end 
+end)
+
+add("visible",{"vis","uninvis"},"Become visible",function()
+	local c=char()
+	if c then 
+		for _,x in pairs(c:GetDescendants())do 
+			if x:IsA("BasePart")and x.Name~="HumanoidRootPart"then 
+				x.Transparency=0 
+			end
+			if x:IsA("Decal")then 
+				x.Transparency=0 
+			end
+		end
+		print("Visible")
+	end 
+end)
+
+add("naked",{"removeClothes"},"Remove all clothing",function()
+	local c=char()
+	if c then 
+		for _,x in pairs(c:GetDescendants())do 
+			if x:IsA("Clothing")or x:IsA("ShirtGraphic")then 
+				x:Destroy()
+			end 
+		end
+		print("Clothes removed")
+	end 
+end)
+
+add("removehats",{"rhats","nohats"},"Remove all hats",function()
+	local c=char()
+	if c then 
+		for _,x in pairs(c:GetChildren())do 
+			if x:IsA("Accessory")then 
+				x:Destroy()
+			end 
+		end
+		print("Hats removed")
+	end 
+end)
+
+add("removetool",{"rtool"},"Remove current tool",function()
+	local c=char()
+	if c then 
+		local t=c:FindFirstChildOfClass("Tool")
+		if t then 
+			t:Destroy()
+			print("Tool removed")
+		end 
+	end 
+end)
+
+add("blockhead",{},"Remove head mesh",function()
+	local c=char()
+	if c and c:FindFirstChild("Head")then 
+		local m=c.Head:FindFirstChildOfClass("SpecialMesh")
+		if m then 
+			m:Destroy()
+			print("Head mesh removed")
+		end 
+	end 
+end)
+
+add("bighead",{},"Giant head [size]",function(a)
+	local c=char()
+	if c and c:FindFirstChild("Head")then 
+		local s=tonumber(a[1])or 3
+		c.Head.Size=Vector3.new(s,s,s)
+	end 
+end)
+
+add("normalhead",{},"Normal head size",function()
+	local c=char()
+	if c and c:FindFirstChild("Head")then 
+		c.Head.Size=Vector3.new(2,1,1)
+	end 
+end)
+
+-- EFFECTS COMMANDS
+add("ff",{"forcefield"},"Add ForceField",function()
+	local c=char()
+	if c then 
+		Instance.new("ForceField",c)
+		print("ForceField added")
+	end 
+end)
+
+add("unff",{"unforcefield"},"Remove ForceField",function()
+	local c=char()
+	if c then 
+		for _,x in pairs(c:GetChildren())do 
+			if x:IsA("ForceField")then 
+				x:Destroy()
+			end 
+		end
+		print("ForceField removed")
+	end 
+end)
+
+add("sparkles",{},"Add sparkles",function()
+	local r=hrp()
+	if r then 
+		Instance.new("Sparkles",r)
+		print("Sparkles added")
+	end 
+end)
+
+add("fire",{},"Add fire",function()
+	local r=hrp()
+	if r then 
+		Instance.new("Fire",r)
+		print("Fire added")
+	end 
+end)
+
+add("smoke",{},"Add smoke",function()
+	local r=hrp()
+	if r then 
+		Instance.new("Smoke",r)
+		print("Smoke added")
+	end 
+end)
+
+add("bigfire",{},"Giant fire",function()
+	local r=hrp()
+	if r then 
+		local f=Instance.new("Fire",r)
+		f.Size=30
+		f.Heat=25
+		print("Big fire added")
+	end 
+end)
+
+add("cleareffects",{"ce","removeeffects"},"Remove all effects",function()
+	local c=char()
+	if c then 
+		for _,x in pairs(c:GetDescendants())do 
+			if x:IsA("Fire")or x:IsA("Smoke")or x:IsA("Sparkles")or x:IsA("ParticleEmitter")then 
+				x:Destroy()
+			end 
+		end
+		print("Effects cleared")
+	end 
+end)
+
+add("flashlight",{"light"},"Add flashlight to head",function()
+	local c=char()
+	if c and c:FindFirstChild("Head")then 
+		local light=Instance.new("PointLight",c.Head)
+		light.Brightness=5
+		light.Range=60
+		print("Flashlight added")
+	end 
+end)
+
+-- VISUAL COMMANDS
+add("fb",{"fullbright"},"Full brightness",function()
+	l.Brightness=2
+	l.OutdoorAmbient=Color3.new(1,1,1)
+	print("Fullbright on")
+end)
+
+add("unfb",{"nofullbright"},"Normal brightness",function()
+	l.Brightness=1
+	l.OutdoorAmbient=Color3.new(.5,.5,.5)
+	print("Fullbright off")
+end)
+
+add("time",{},"Set time [0-24]",function(a)
+	l.ClockTime=tonumber(a[1])or 12
+	print("Time set to "..l.ClockTime)
+end)
+
+add("day",{},"Set to daytime",function()
+	l.ClockTime=14
+	print("Time: Day")
+end)
+
+add("night",{},"Set to nighttime",function()
+	l.ClockTime=0
+	print("Time: Night")
+end)
+
+add("fov",{},"Camera FOV [number]",function(a)
+	ws.CurrentCamera.FieldOfView=tonumber(a[1])or 70
+	print("FOV: "..ws.CurrentCamera.FieldOfView)
+end)
+
+add("fixcam",{},"Reset camera",function()
+	local h=hum()
+	if h then 
+		ws.CurrentCamera.CameraSubject=h
+		ws.CurrentCamera.CameraType=Enum.CameraType.Custom
+		print("Camera fixed")
+	end 
+end)
+
+add("firstperson",{"fp"},"Lock to first person",function()
+	p.CameraMode=Enum.CameraMode.LockFirstPerson
+	print("First person")
+end)
+
+add("thirdperson",{"tp"},"Third person view",function()
+	p.CameraMode=Enum.CameraMode.Classic
+	print("Third person")
+end)
+
+add("nofog",{},"Remove fog",function()
+	l.FogEnd=100000
+	print("Fog removed")
+end)
+
+add("ambient",{},"Ambient color [r] [g] [b]",function(a)
+	l.Ambient=Color3.new(tonumber(a[1])or 1,tonumber(a[2])or 1,tonumber(a[3])or 1)
+	print("Ambient changed")
+end)
+
+add("brightness",{},"Brightness [number]",function(a)
+	l.Brightness=tonumber(a[1])or 1
+	print("Brightness: "..l.Brightness)
+end)
+
+-- WORLD COMMANDS
+add("gravity",{"grav"},"Change gravity [number]",function(a)
+	ws.Gravity=tonumber(a[1])or 196.2
+	print("Gravity: "..ws.Gravity)
+end)
+
+add("platform",{"plat"},"Create platform below",function()
+	local r=hrp()
+	if r then 
+		local pt=Instance.new("Part",ws)
+		pt.Size=Vector3.new(20,1,20)
+		pt.Anchored=true
+		pt.Position=r.Position-Vector3.new(0,4,0)
+		print("Platform created")
+	end 
+end)
+
+-- UTILITY COMMANDS
+add("cmds",{"help","commands"},"Show command list",function()
+	lf.Visible=true
+end)
+
+add("rejoin",{"rj"},"Rejoin this server",function()
+	ts:Teleport(game.PlaceId,p)
+end)
+
+add("serverhop",{"sh"},"Join different server",function()
+	ts:Teleport(game.PlaceId)
+end)
+
+add("id",{"placeid"},"Show PlaceID",function()
+	print("PlaceID: "..game.PlaceId)
+end)
+
+add("age",{"accountage"},"Show account age",function()
+	print("Account age: "..p.AccountAge.." days")
+end)
+
+add("username",{"user"},"Show username",function()
+	print("Username: "..p.Name)
+end)
+
+add("userid",{},"Show UserID",function()
+	print("UserID: "..p.UserId)
+end)
+
+add("coords",{"position","pos"},"Show coordinates",function()
+	local r=hrp()
+	if r then 
+		local pos=r.Position
+		print(string.format("Position: X:%.2f Y:%.2f Z:%.2f",pos.X,pos.Y,pos.Z))
+	end 
+end)
+
+add("fps",{},"Show FPS",function()
+	local fps=math.floor(1/rs.RenderStepped:Wait())
+	print("FPS: "..fps)
+end)
+
+add("ping",{},"Show ping",function()
+	local ping=game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+	print("Ping: "..math.floor(ping).."ms")
+end)
+
+add("clear",{},"Clear command bar",function()
+	cb.Text=""
+end)
+
+add("prefix",{},"Change prefix [char]",function(a)
+	pfx=a[1]or";"
+	print("Prefix changed to: "..pfx)
+end)
+
+add("unload",{"deactivate","destroy"},"Unload admin script",function()
+	v.active=false
+	for _,c in pairs(conns)do 
+		c:Disconnect()
+	end
+	sg:Destroy()
+	print("Admin unloaded")
+end)
+
+ll.Text=cmdTxt
+
+-- INPUT HANDLING
+track(uis.InputBegan:Connect(function(input,gameProcessed)
+	if not gameProcessed and input.KeyCode==Enum.KeyCode.Semicolon then 
+		mf:TweenPosition(UDim2.new(.5,-100,0,20),"Out","Back",.3,true)
+		task.wait()
+		cb:CaptureFocus()
+		cb.Text=""
+	end 
+end))
+
+cb.FocusLost:Connect(function(enterPressed)
+	mf:TweenPosition(UDim2.new(.5,-100,0,-60),"Out","Quad",.3,true)
+	if enterPressed and cb.Text~=""then 
+		local args=cb.Text:split(" ")
+		local cmdName=args[1]:lower()
+		table.remove(args,1)
+		
+		if cmds[cmdName]then 
+			local success,err=pcall(function()
+				cmds[cmdName](args)
+			end)
+			if not success then
+				warn("Command error: "..err)
+			end
+		else
+			warn("Unknown command: "..cmdName)
+		end
+	end 
+end)
+
+cl.MouseButton1Click:Connect(function()
+	lf.Visible=false
+end)
+
+-- MAIN LOOP
+track(rs.RenderStepped:Connect(function()
+	if not v.active then return end
+	
+	-- Noclip
+	if v.noclip then
+		local c=char()
+		if c then 
+			for _,part in pairs(c:GetDescendants())do 
+				if part:IsA("BasePart")then 
+					part.CanCollide=false 
+				end 
+			end 
+		end
+	end
+	
+	-- Spin
+	if v.spin then
+		local r=hrp()
+		if r then 
+			r.CFrame=r.CFrame*CFrame.Angles(0,math.rad(v.rotateSpeed),0)
+		end
+	end
+	
+	-- Freeze
+	if v.freeze then
+		local r=hrp()
+		if r then 
+			r.Anchored=true
+		end
+	else
+		local r=hrp()
+		if r and r.Anchored then 
+			r.Anchored=false
+		end
+	end
+	
+	-- Fly
+	if v.fly then
+		local r=hrp()
+		if r then
+			local cam=ws.CurrentCamera.CFrame
+			local move=Vector3.new(0,0,0)
+			
+			if uis:IsKeyDown(Enum.KeyCode.W)then 
+				move=move+cam.LookVector 
+			end
+			if uis:IsKeyDown(Enum.KeyCode.S)then 
+				move=move-cam.LookVector 
+			end
+			if uis:IsKeyDown(Enum.KeyCode.A)then 
+				move=move-cam.RightVector 
+			end
+			if uis:IsKeyDown(Enum.KeyCode.D)then 
+				move=move+cam.RightVector 
+			end
+			if uis:IsKeyDown(Enum.KeyCode.Space)then 
+				move=move+Vector3.new(0,1,0)
+			end
+			if uis:IsKeyDown(Enum.KeyCode.LeftShift)then 
+				move=move-Vector3.new(0,1,0)
+			end
+			
+			r.Velocity=move*(v.flyspeed*50)
+			r.CFrame=CFrame.new(r.Position,r.Position+cam.LookVector)
+		end
+	end
+end))
+
+-- Infinite Jump
+track(uis.JumpRequest:Connect(function()
+	if v.infjump then
+		local h=hum()
+		if h then 
+			h:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
+	end
+end))
+
+print("✓ Personal Admin loaded successfully!")
+print("Press ; to open command bar")
+print("Type 'cmds' to see all commands")
