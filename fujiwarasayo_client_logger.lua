@@ -1,371 +1,370 @@
--- Client Logger Script
--- Logs client-side events, remotes, prints, and LocalScript activity
+--========================================================--
+--  SHIRAYUKIMIKOTO CLIENT LOGGER (REBUILT + FIXED)
+--  Fully compatible with new menu system
+--  Popup size: 460 × 300
+--========================================================--
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
--- Configuration
-local COLOR_PRIMARY = Color3.fromRGB(0, 85, 170)
-local COLOR_BUTTON = Color3.fromRGB(0, 120, 215)
-local COLOR_BG_DARK = Color3.fromRGB(30, 30, 60)
-local COLOR_TEXT = Color3.new(1, 1, 1)
+--========================================================--
+--  CONFIG (Matches your new UI theme)
+--========================================================--
 
--- Helper Functions
+local CONFIG = {
+    Colors = {
+        Primary = Color3.fromRGB(30, 30, 60),
+        Header = Color3.fromRGB(0, 85, 170),
+        Button = Color3.fromRGB(0, 120, 215),
+        Danger = Color3.fromRGB(180, 60, 60),
+        Text = Color3.new(1, 1, 1),
+    },
+    Sizes = {
+        Width = 460,
+        Height = 300,
+        HeaderHeight = 28,
+        ButtonHeight = 24,
+        Corner = 6
+    }
+}
+
+--========================================================--
+--  SAFE PARENT
+--========================================================--
+
 local function safeParent(gui)
     local ok = pcall(function()
         gui.Parent = CoreGui
     end)
     if not ok or not gui.Parent then
-        local pg = LocalPlayer:WaitForChild("PlayerGui")
-        gui.Parent = pg
+        gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end
 end
 
--- Create Main GUI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ClientLoggerGui"
-screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
-safeParent(screenGui)
+--========================================================--
+--  LOGGER STATE
+--========================================================--
 
--- Logger State
 local loggerGui
 local loggerScroll
-local loggerDragging = false
-local loggerDragStart
-local loggerStartPos
-local loggerHooks = {}
-local loggerRemoteOldInvoke = {}
-local loggerOldPrint, loggerOldWarn, loggerOldError
 local loggerEnabled = false
-local filter_prints = true
-local filter_remotes = true
-local filter_functions = true
-local filter_physics = true
-local filter_ui = true
-local filter_localscripts = true
 
-local function CreateLoggerGui()
-    loggerGui = Instance.new("Frame")
-    loggerGui.Name = "ClientLoggerWindow"
-    loggerGui.Size = UDim2.new(0, 460, 0, 300)
-    loggerGui.Position = UDim2.new(0, 380, 0, 100)
-    loggerGui.BackgroundColor3 = COLOR_BG_DARK
-    loggerGui.BorderSizePixel = 0
-    loggerGui.Active = true
-    loggerGui.Visible = false
-    loggerGui.Parent = screenGui
-    
+local hooks = {}
+local oldPrint, oldWarn
+local oldInvoke = {}
+
+local filters = {
+    print = true,
+    remote = true,
+    func = true,
+    physics = true,
+    ui = true,
+    script = true
+}
+
+--========================================================--
+--  UI HELPERS
+--========================================================--
+
+local function corner(parent)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, CONFIG.Sizes.Corner)
+    c.Parent = parent
+end
+
+local function makeButton(parent, text, color)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 65, 0, CONFIG.Sizes.ButtonHeight)
+    btn.BackgroundColor3 = color or CONFIG.Colors.Button
+    btn.TextColor3 = CONFIG.Colors.Text
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 12
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.Parent = parent
+    corner(btn)
+    return btn
+end
+
+local function logLine(msg)
+    if not loggerEnabled then return end
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -4, 0, 18)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = CONFIG.Colors.Text
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Text = msg
+    lbl.Parent = loggerScroll
+end
+
+--========================================================--
+--  CREATE LOGGER GUI
+--========================================================--
+
+local function createGui()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "ShirayukiClientLogger"
+    gui.ResetOnSpawn = false
+    gui.Enabled = false
+    safeParent(gui)
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, CONFIG.Sizes.Width, 0, CONFIG.Sizes.Height)
+    frame.Position = UDim2.new(0, 380, 0, 100)
+    frame.BackgroundColor3 = CONFIG.Colors.Primary
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Parent = gui
+    corner(frame)
+
+    -- Header
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, CONFIG.Sizes.HeaderHeight)
+    header.BackgroundColor3 = CONFIG.Colors.Header
+    header.BorderSizePixel = 0
+    header.Parent = frame
+    corner(header)
+
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 24)
-    title.BackgroundColor3 = COLOR_PRIMARY
-    title.BorderSizePixel = 0
-    title.Text = "Client-side Event/Script Logger"
-    title.TextColor3 = COLOR_TEXT
+    title.Size = UDim2.new(1, -90, 1, 0)
+    title.Position = UDim2.new(0, 8, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "Client Logger"
+    title.TextColor3 = CONFIG.Colors.Text
     title.Font = Enum.Font.GothamBold
     title.TextSize = 14
     title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = loggerGui
-    
-    local pad = Instance.new("UIPadding")
-    pad.PaddingLeft = UDim.new(0, 6)
-    pad.Parent = title
-    
-    local filterFrame = Instance.new("Frame")
-    filterFrame.Size = UDim2.new(1, -10, 0, 30)
-    filterFrame.Position = UDim2.new(0, 5, 0, 26)
-    filterFrame.BackgroundTransparency = 1
-    filterFrame.Parent = loggerGui
-    
-    local filterLayout = Instance.new("UIListLayout")
-    filterLayout.FillDirection = Enum.FillDirection.Horizontal
-    filterLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    filterLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    filterLayout.Padding = UDim.new(0, 6)
-    filterLayout.Parent = filterFrame
-    
-    local function MakeFilterToggle(text, default, callback)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 65, 0, 24)
-        btn.BackgroundColor3 = COLOR_BUTTON
-        btn.TextColor3 = COLOR_TEXT
-        btn.Font = Enum.Font.Gotham
-        btn.TextSize = 12
-        btn.BorderSizePixel = 0
-        local state = default
-        local function update()
-            btn.Text = text .. (state and " ON" or " OFF")
+    title.Parent = header
+
+    -- Close button
+    local closeBtn = makeButton(header, "×", CONFIG.Colors.Danger)
+    closeBtn.Size = UDim2.new(0, 28, 0, 22)
+    closeBtn.Position = UDim2.new(1, -32, 0.5, -11)
+    closeBtn.TextSize = 16
+
+    closeBtn.MouseButton1Click:Connect(function()
+        gui.Enabled = false
+    end)
+
+    -- Dragging
+    local dragging = false
+    local dragStart, startPos
+
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
         end
-        update()
-        btn.MouseButton1Click:Connect(function()
-            state = not state
-            update()
-            callback(state)
-        end)
-        btn.Parent = filterFrame
-        return btn
+    end)
+
+    header.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    -- Filters
+    local filterFrame = Instance.new("Frame")
+    filterFrame.Size = UDim2.new(1, -10, 0, 26)
+    filterFrame.Position = UDim2.new(0, 5, 0, CONFIG.Sizes.HeaderHeight + 2)
+    filterFrame.BackgroundTransparency = 1
+    filterFrame.Parent = frame
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = filterFrame
+
+    local function toggleFilter(name)
+        filters[name] = not filters[name]
     end
-    
-    MakeFilterToggle("Print", true, function(v) filter_prints = v end)
-    MakeFilterToggle("Remote", true, function(v) filter_remotes = v end)
-    MakeFilterToggle("Func", true, function(v) filter_functions = v end)
-    MakeFilterToggle("Phys", true, function(v) filter_physics = v end)
-    MakeFilterToggle("UI", true, function(v) filter_ui = v end)
-    MakeFilterToggle("Script", true, function(v) filter_localscripts = v end)
-    
-    local clearBtn = Instance.new("TextButton")
-    clearBtn.Size = UDim2.new(0, 50, 0, 24)
-    clearBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-    clearBtn.TextColor3 = COLOR_TEXT
-    clearBtn.Font = Enum.Font.GothamBold
-    clearBtn.TextSize = 12
-    clearBtn.Text = "CLEAR"
-    clearBtn.BorderSizePixel = 0
-    clearBtn.Parent = filterFrame
-    
+
+    makeButton(filterFrame, "Print", CONFIG.Colors.Button).MouseButton1Click:Connect(function() toggleFilter("print") end)
+    makeButton(filterFrame, "Remote", CONFIG.Colors.Button).MouseButton1Click:Connect(function() toggleFilter("remote") end)
+    makeButton(filterFrame, "Func", CONFIG.Colors.Button).MouseButton1Click:Connect(function() toggleFilter("func") end)
+    makeButton(filterFrame, "Phys", CONFIG.Colors.Button).MouseButton1Click:Connect(function() toggleFilter("physics") end)
+    makeButton(filterFrame, "UI", CONFIG.Colors.Button).MouseButton1Click:Connect(function() toggleFilter("ui") end)
+    makeButton(filterFrame, "Script", CONFIG.Colors.Button).MouseButton1Click:Connect(function() toggleFilter("script") end)
+
+    -- Clear button
+    local clearBtn = makeButton(filterFrame, "CLEAR", CONFIG.Colors.Danger)
     clearBtn.MouseButton1Click:Connect(function()
-        if loggerScroll then
-            for _, child in ipairs(loggerScroll:GetChildren()) do
-                if child:IsA("TextLabel") then
-                    child:Destroy()
-                end
+        for _, child in ipairs(loggerScroll:GetChildren()) do
+            if child:IsA("TextLabel") then
+                child:Destroy()
             end
         end
     end)
-    
+
+    -- Log area
     loggerScroll = Instance.new("ScrollingFrame")
-    loggerScroll.Size = UDim2.new(1, -10, 1, -66)
+    loggerScroll.Size = UDim2.new(1, -10, 1, -60)
     loggerScroll.Position = UDim2.new(0, 5, 0, 60)
     loggerScroll.BackgroundTransparency = 1
     loggerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     loggerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     loggerScroll.ScrollBarThickness = 6
-    loggerScroll.Parent = loggerGui
-    
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 2)
-    layout.Parent = loggerScroll
-    
-    title.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            loggerDragging = true
-            loggerDragStart = input.Position
-            loggerStartPos = loggerGui.Position
-        end
-    end)
-    
-    title.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            loggerDragging = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if loggerDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - loggerDragStart
-            loggerGui.Position = UDim2.new(
-                loggerStartPos.X.Scale,
-                loggerStartPos.X.Offset + delta.X,
-                loggerStartPos.Y.Scale,
-                loggerStartPos.Y.Offset + delta.Y
-            )
-        end
-    end)
+    loggerScroll.Parent = frame
+
+    local logLayout = Instance.new("UIListLayout")
+    logLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    logLayout.Padding = UDim.new(0, 2)
+    logLayout.Parent = loggerScroll
+
+    loggerGui = gui
 end
 
-CreateLoggerGui()
+createGui()
 
-local function Log(msg, category)
-    if not loggerEnabled or not loggerScroll then return end
-    
-    if category == "print" and not filter_prints then return end
-    if category == "remote" and not filter_remotes then return end
-    if category == "function" and not filter_functions then return end
-    if category == "physics" and not filter_physics then return end
-    if category == "ui" and not filter_ui then return end
-    if category == "localscript" and not filter_localscripts then return end
-    
-    local line = Instance.new("TextLabel")
-    line.Size = UDim2.new(1, -4, 0, 18)
-    line.BackgroundTransparency = 1
-    line.TextColor3 = COLOR_TEXT
-    line.Font = Enum.Font.Code
-    line.TextSize = 13
-    line.TextXAlignment = Enum.TextXAlignment.Left
-    line.Text = msg
-    line.TextWrapped = false
-    line.TextTruncate = Enum.TextTruncate.AtEnd
-    line.Parent = loggerScroll
-end
+--========================================================--
+--  HOOKING
+--========================================================--
 
-local function HookPrints()
-    if loggerOldPrint then return end
-    
-    loggerOldPrint = print
-    loggerOldWarn = warn
-    
+local function hookPrints()
+    if oldPrint then return end
+
+    oldPrint = print
+    oldWarn = warn
+
     getgenv().print = function(...)
-        loggerOldPrint(...)
-        local args = {...}
-        local msg = ""
-        for i, v in ipairs(args) do
-            msg = msg .. tostring(v) .. (i < #args and " " or "")
+        oldPrint(...)
+        if filters.print then
+            logLine("[PRINT] " .. table.concat({...}, " "))
         end
-        Log("[PRINT] " .. msg, "print")
     end
-    
+
     getgenv().warn = function(...)
-        loggerOldWarn(...)
-        local args = {...}
-        local msg = ""
-        for i, v in ipairs(args) do
-            msg = msg .. tostring(v) .. (i < #args and " " or "")
+        oldWarn(...)
+        if filters.print then
+            logLine("[WARN] " .. table.concat({...}, " "))
         end
-        Log("[WARN] " .. msg, "print")
     end
 end
 
-local function HookRemotes()
-    local function hookRemote(obj)
+local function hookRemotes()
+    local function hook(obj)
         if obj:IsA("RemoteEvent") then
             local c = obj.OnClientEvent:Connect(function(...)
-                local args = {...}
-                local argStr = ""
-                for i, v in ipairs(args) do
-                    argStr = argStr .. tostring(v) .. (i < #args and ", " or "")
+                if filters.remote then
+                    logLine("[RemoteEvent] " .. obj.Name)
                 end
-                Log("[RemoteEvent] " .. obj:GetFullName() .. " (" .. argStr .. ")", "remote")
             end)
-            table.insert(loggerHooks, function()
-                c:Disconnect()
-            end)
+            table.insert(hooks, function() c:Disconnect() end)
+
         elseif obj:IsA("RemoteFunction") then
-            if not loggerRemoteOldInvoke[obj] then
-                loggerRemoteOldInvoke[obj] = obj.OnClientInvoke
+            if not oldInvoke[obj] then
+                oldInvoke[obj] = obj.OnClientInvoke
                 obj.OnClientInvoke = function(...)
-                    Log("[RemoteFunction] " .. obj:GetFullName(), "function")
-                    if loggerRemoteOldInvoke[obj] then
-                        return loggerRemoteOldInvoke[obj](...)
+                    if filters.func then
+                        logLine("[RemoteFunction] " .. obj.Name)
+                    end
+                    if oldInvoke[obj] then
+                        return oldInvoke[obj](...)
                     end
                 end
-                table.insert(loggerHooks, function()
-                    if loggerRemoteOldInvoke[obj] then
-                        obj.OnClientInvoke = loggerRemoteOldInvoke[obj]
-                    end
-                end)
             end
         end
     end
-    
+
     for _, obj in ipairs(game:GetDescendants()) do
-        pcall(function()
-            hookRemote(obj)
-        end)
+        pcall(function() hook(obj) end)
     end
-    
-    local c = game.DescendantAdded:Connect(function(obj)
-        pcall(function()
-            hookRemote(obj)
-        end)
+
+    local added = game.DescendantAdded:Connect(function(obj)
+        pcall(function() hook(obj) end)
     end)
-    table.insert(loggerHooks, function()
-        c:Disconnect()
-    end)
+
+    table.insert(hooks, function() added:Disconnect() end)
 end
 
-local function HookLocalScripts()
-    local function hookScript(obj)
+local function hookLocalScripts()
+    local function hook(obj)
         if obj:IsA("LocalScript") then
-            Log("[LocalScript Added] " .. obj:GetFullName(), "localscript")
-            
-            local propConn = obj:GetPropertyChangedSignal("Enabled"):Connect(function()
-                Log("[LocalScript Toggled] " .. obj:GetFullName() .. " Enabled=" .. tostring(obj.Enabled), "localscript")
-            end)
-            table.insert(loggerHooks, function()
-                propConn:Disconnect()
-            end)
+            if filters.script then
+                logLine("[LocalScript] " .. obj:GetFullName())
+            end
         end
     end
-    
+
     for _, obj in ipairs(game:GetDescendants()) do
-        pcall(function()
-            hookScript(obj)
-        end)
+        pcall(function() hook(obj) end)
     end
-    
-    local addedConn = game.DescendantAdded:Connect(function(obj)
-        pcall(function()
-            hookScript(obj)
-        end)
+
+    local added = game.DescendantAdded:Connect(function(obj)
+        pcall(function() hook(obj) end)
     end)
-    
-    local removedConn = game.DescendantRemoving:Connect(function(obj)
-        if obj:IsA("LocalScript") then
-            Log("[LocalScript Removed] " .. obj:GetFullName(), "localscript")
-        end
-    end)
-    
-    table.insert(loggerHooks, function()
-        addedConn:Disconnect()
-        removedConn:Disconnect()
-    end)
+
+    table.insert(hooks, function() added:Disconnect() end)
 end
 
-local function EnableLogger()
+--========================================================--
+--  ENABLE / DISABLE
+--========================================================--
+
+local function Enable()
     if loggerEnabled then return end
     loggerEnabled = true
-    loggerGui.Visible = true
-    
-    for _, fn in ipairs(loggerHooks) do
-        pcall(fn)
-    end
-    loggerHooks = {}
-    
-    Log("Logger enabled", "print")
-    HookPrints()
-    HookRemotes()
-    HookLocalScripts()
+    loggerGui.Enabled = true
+
+    hookPrints()
+    hookRemotes()
+    hookLocalScripts()
+
+    logLine("Logger enabled")
 end
 
-local function DisableLogger()
+local function Disable()
     if not loggerEnabled then return end
     loggerEnabled = false
-    loggerGui.Visible = false
-    
-    for _, fn in ipairs(loggerHooks) do
+    loggerGui.Enabled = false
+
+    for _, fn in ipairs(hooks) do
         pcall(fn)
     end
-    loggerHooks = {}
-    
-    for obj, old in pairs(loggerRemoteOldInvoke) do
-        pcall(function()
-            obj.OnClientInvoke = old
-        end)
+    hooks = {}
+
+    for obj, old in pairs(oldInvoke) do
+        pcall(function() obj.OnClientInvoke = old end)
     end
-    loggerRemoteOldInvoke = {}
-    
-    if loggerOldPrint then
-        getgenv().print = loggerOldPrint
-        getgenv().warn = loggerOldWarn
-        loggerOldPrint, loggerOldWarn, loggerOldError = nil, nil, nil
+    oldInvoke = {}
+
+    if oldPrint then
+        getgenv().print = oldPrint
+        getgenv().warn = oldWarn
+        oldPrint, oldWarn = nil, nil
     end
 end
 
--- Public API
+local function Toggle()
+    if loggerEnabled then Disable() else Enable() end
+end
+
+--========================================================--
+--  RETURN API
+--========================================================--
+
 return {
-    Enable = EnableLogger,
-    Disable = DisableLogger,
-    Toggle = function()
-        if loggerEnabled then
-            DisableLogger()
-        else
-            EnableLogger()
-        end
-    end,
-    IsEnabled = function()
-        return loggerEnabled
-    end
+    Enable = Enable,
+    Disable = Disable,
+    Toggle = Toggle,
+    IsEnabled = function() return loggerEnabled end
 }
