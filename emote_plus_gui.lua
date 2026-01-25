@@ -74,6 +74,21 @@ minimizeButton.MouseButton1Click:Connect(function()
 		mainFrame:TweenSize(savedSize, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
 	end
 end)
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 40, 0, 28)
+closeButton.Position = UDim2.new(1, -96, 0, 8) -- sits left of minimize button
+closeButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+closeButton.BorderSizePixel = 0
+closeButton.TextColor3 = COLOR_TEXT
+closeButton.Font = Enum.Font.GothamSemibold
+closeButton.TextSize = 18
+closeButton.Text = "×"
+closeButton.Parent = mainFrame
+
+closeButton.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
+end)
 
 -- Dragging
 local dragging = false
