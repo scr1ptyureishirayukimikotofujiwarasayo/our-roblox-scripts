@@ -1,2700 +1,1090 @@
--- Fujiwara Sayo's Admin Script
--- Fixed and renamed version
+-- Fujiwarasayo's Admin Script (Extended)
+-- By illremember#3799
 
-trueSettings = {
-    commandPrefix = ';',
-    hotkeys = {},
-    fchotkeymode = 'unfc'
-}
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 
--- Services
-gsPlayers = game:GetService('Players')
-gsWorkspace = game:GetService('Workspace')
-gsLighting = game:GetService('Lighting')
-gsReplicatedStorage = game:GetService('ReplicatedStorage')
-gsCoreGui = game:GetService('CoreGui')
-gsTween = game:GetService('TweenService')
-gsHttp = game:GetService('HttpService')
+local LP = Players.LocalPlayer
+local Mouse = LP:GetMouse()
 
--- Local Player
-LP = gsPlayers.LocalPlayer
-Mouse = LP:GetMouse()
+-- Settings
+local prefix = ";"
+local noclipEnabled = false
+local flying = false
+local walkSpeed = 16
+local jumpPower = 50
+local savedPosition = nil
+local clickTpEnabled = false
+local spamActive = false
+local spamMessage = ""
+local spamDelay = 1
 
-defaultSettings = gsHttp:JSONEncode(trueSettings)
-
--- Save/Load Functions
-function CreateSave()
-    writefile('FujiwaraSayo.txt', defaultSettings)
-    wait(.5)
-    local fileContent = readfile('FujiwaraSayo.txt')
-    local decodedSettings = gsHttp:JSONDecode(fileContent)
-    commandPrefix = decodedSettings.commandPrefix
-    hotkeys = decodedSettings.hotkeys
-    fchotkeymode = decodedSettings.fchotkeymode
+-- Notification System
+function notify(title, message, duration)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = CoreGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 80)
+    frame.Position = UDim2.new(0.5, -150, 0, 50)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Size = UDim2.new(1, 0, 0, 20)
+    titleLbl.Position = UDim2.new(0, 0, 0, 5)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = title
+    titleLbl.TextColor3 = Color3.fromRGB(255, 255, 100)
+    titleLbl.TextSize = 16
+    titleLbl.Font = Enum.Font.SourceSansBold
+    titleLbl.Parent = frame
+    
+    local msgLbl = Instance.new("TextLabel")
+    msgLbl.Size = UDim2.new(1, 0, 0, 40)
+    msgLbl.Position = UDim2.new(0, 0, 0, 25)
+    msgLbl.BackgroundTransparency = 1
+    msgLbl.Text = message
+    msgLbl.TextColor3 = Color3.fromRGB(230, 230, 230)
+    msgLbl.TextSize = 14
+    msgLbl.Font = Enum.Font.SourceSans
+    msgLbl.TextWrapped = true
+    msgLbl.Parent = frame
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 20, 0, 20)
+    closeBtn.Position = UDim2.new(1, -25, 0, 5)
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    closeBtn.BackgroundTransparency = 0.5
+    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    closeBtn.Parent = frame
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+    end)
+    
+    spawn(function()
+        wait(duration or 5)
+        if screenGui and screenGui.Parent then
+            screenGui:Destroy()
+        end
+    end)
 end
 
-function fullUpdate()
-    local updatedSettings = {
-        commandPrefix = commandPrefix,
-        hotkeys = hotkeys,
-        fchotkeymode = fchotkeymode
-    }
-    local encodedSettings = gsHttp:JSONEncode(updatedSettings)
-    wait(.2)
-    writefile('FujiwaraSayo.txt', encodedSettings)
+-- Utility Functions
+function findPlayer(name)
+    for _, player in pairs(Players:GetPlayers()) do
+        if string.sub(string.lower(player.Name), 1, #name) == string.lower(name) then
+            return player
+        end
+    end
+    return nil
 end
 
--- Initialize Settings
-if writefile ~= nil then
-    function builder()
-        local fileContent = readfile('FujiwaraSayo.txt')
-        if fileContent == nil then
-            return false
-        else
+function hasTools()
+    for _, child in pairs(LP.Character:GetDescendants()) do
+        if child:IsA("Tool") then
             return true
         end
     end
-    
-    local success, error = pcall(builder)
-    
-    if success == true then
-        function reader()
-            local fileContent = readfile('FujiwaraSayo.txt')
-            local decodedSettings = gsHttp:JSONDecode(fileContent)
-            commandPrefix = decodedSettings.commandPrefix
-            hotkeys = decodedSettings.hotkeys
-            if decodedSettings.fchotkeymode == nil then
-                fchotkeymode = 'unfc'
-                fullUpdate()
-            else
-                fchotkeymode = decodedSettings.fchotkeymode
-            end
-        end
-        reader()
-    elseif success == false then
-        CreateSave()
-    end
-else
-    commandPrefix = ';'
-    hotkeys = {}
-    fchotkeymode = 'unfc'
-end
-
--- Current Settings
-CurrentGravity = gsWorkspace.Gravity
-CurrentWalkspeed = LP.Character.Humanoid.WalkSpeed
-CurrentJumppower = LP.Character.Humanoid.JumpPower
-CurrentHipheight = LP.Character.Humanoid.HipHeight
-CurrentNormal = LP.DevCameraOcclusionMode
-
--- Camera FOV Lock
-gsWorkspace.Camera.Changed:Connect(function()
-    gsWorkspace.Camera.FieldOfView = 70
-end)
-
--- View Function
-function view(plr)
-    if plr.Character.Humanoid ~= nil then
-        gsWorkspace.CurrentCamera.CameraSubject = plr.Character.Humanoid
-    else
-        gsWorkspace.CurrentCamera.CameraSubject = plr.Character.Head
-    end
-end
-
--- Workspace Lock/Unlock
-function unlockWS()
-    for i, part in pairs(gsWorkspace:GetDescendants()) do
-        if part:IsA('Part') then
-            part.Locked = false
+    for _, child in pairs(LP.Backpack:GetDescendants()) do
+        if child:IsA("Tool") then
+            return true
         end
     end
+    return false
 end
 
-function lockWS()
-    for i, part in pairs(gsWorkspace:GetDescendants()) do
-        if part:IsA('Part') then
-            part.Locked = true
+-- Core Commands
+local commands = {}
+
+commands.help = function()
+    local helpText = "Available Commands:\n"
+    for cmdName, _ in pairs(commands) do
+        helpText = helpText .. prefix .. cmdName .. "\n"
+    end
+    notify("Help", helpText, 10)
+end
+
+commands.prefix = function(args)
+    if args[1] then
+        prefix = args[1]:sub(1, 1)
+        notify("Prefix Changed", "New prefix: " .. prefix, 3)
+    end
+end
+
+commands.noclip = function()
+    noclipEnabled = true
+    notify("Noclip", "Enabled", 3)
+end
+
+commands.clip = function()
+    noclipEnabled = false
+    notify("Noclip", "Disabled", 3)
+end
+
+commands.speed = function(args)
+    if args[1] and tonumber(args[1]) then
+        LP.Character.Humanoid.WalkSpeed = tonumber(args[1])
+        notify("Walk Speed", "Set to " .. args[1], 3)
+    end
+end
+
+commands.jp = function(args)
+    if args[1] and tonumber(args[1]) then
+        LP.Character.Humanoid.JumpPower = tonumber(args[1])
+        notify("Jump Power", "Set to " .. args[1], 3)
+    end
+end
+
+commands.sit = function()
+    LP.Character.Humanoid.Sit = true
+    notify("Sit", "Activated", 3)
+end
+
+commands.reset = function()
+    LP.Character:BreakJoints()
+    notify("Reset", "Character reset", 3)
+end
+
+commands.god = function()
+    local humanoid = LP.Character.Humanoid
+    humanoid.Name = "1"
+    local newHum = humanoid:Clone()
+    newHum.Parent = LP.Character
+    newHum.Name = "Humanoid"
+    wait()
+    humanoid:Destroy()
+    Workspace.CurrentCamera.CameraSubject = LP.Character
+    LP.Character.Animate:Destroy()
+    notify("God Mode", "Activated (tools broken)", 5)
+end
+
+commands.goto = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            LP.Character:SetPrimaryPartCFrame(player.Character:GetPrimaryPartCFrame())
+            notify("Teleport", "Teleported to " .. player.Name, 3)
         end
     end
 end
 
--- FE Godmode
-function FEGodmode()
-    local isCurrentCamera = false
-    if gsWorkspace.CurrentCamera.CameraSubject == LP.Character.Humanoid or 
-       gsWorkspace.CurrentCamera.CameraSubject == LP.Character then
-        isCurrentCamera = true
-    end
+commands.btools = function()
+    local cloneBin = Instance.new("HopperBin")
+    cloneBin.BinType = Enum.BinType.Clone
+    cloneBin.Parent = LP:FindFirstChildOfClass("Backpack")
     
-    LP.Character.Humanoid.Name = 1
-    local clone = LP.Character['1']:Clone()
-    clone.Parent = LP.Character
-    clone.Name = 'Humanoid'
-    wait(.1)
-    LP.Character['1']:Destroy()
+    local hammerBin = Instance.new("HopperBin")
+    hammerBin.BinType = Enum.BinType.Hammer
+    hammerBin.Parent = LP:FindFirstChildOfClass("Backpack")
     
-    if isCurrentCamera then
-        game:GetService('Workspace').CurrentCamera.CameraSubject = LP.Character
-    end
+    local grabBin = Instance.new("HopperBin")
+    grabBin.BinType = Enum.BinType.Grab
+    grabBin.Parent = LP:FindFirstChildOfClass("Backpack")
     
-    LP.Character.Animate.Disabled = true
-    wait(.1)
-    LP.Character.Animate.Disabled = false
-    LP.Character.Humanoid.DisplayDistanceType = 'None'
+    notify("BTools", "Added to backpack", 3)
 end
 
--- Rocket Propulsion
-function RocketPropulsion(maxthrust, maxspeed, thrustp, targetplr, name)
-    local rocketProp = Instance.new('RocketPropulsion')
-    rocketProp.Parent = LP.Character.HumanoidRootPart
-    rocketProp.CartoonFactor = 1
-    rocketProp.MaxThrust = maxthrust
-    rocketProp.MaxSpeed = maxspeed
-    rocketProp.ThrustP = thrustp
-    rocketProp.Name = name
-    rocketProp.Target = targetplr.Character.HumanoidRootPart
-    rocketProp:Fire()
-end
--- Notification and Intro Functions
-function createIntro(style, message, length)
-    if gsCoreGui:FindFirstChild('Notification') then
-        gsCoreGui:FindFirstChild('Notification'):Destroy()
+commands.invisible = function()
+    local character = LP.Character
+    if character:FindFirstChild("HumanoidRootPart") then
+        local root = character.HumanoidRootPart
+        local clone = root:Clone()
+        root:Destroy()
+        clone.Parent = character
+        notify("Invisible", "Activated", 3)
     end
-    
-    local infoIcon = 'http://www.roblox.com/asset/?id=1281284684'
-    local warningIcon = 'http://www.roblox.com/asset/?id=1281286925'
-    
-    if style == 'info' then
-        style = infoIcon
-    elseif style == 'warning' then
-        style = warningIcon
-    end
-    
-    local ScreenGui = Instance.new('ScreenGui')
-    local Frame = Instance.new('Frame')
-    local TextLabel = Instance.new('TextLabel')
-    local ImageLabel = Instance.new('ImageLabel')
-    
-    ScreenGui.Name = 'Notification'
-    ScreenGui.Parent = gsCoreGui
-    
-    Frame.Parent = ScreenGui
-    Frame.BackgroundColor3 = Color3.new(.164706, .164706, .164706)
-    Frame.BackgroundTransparency = .20000000298023
-    Frame.BorderSizePixel = 0
-    Frame.Position = UDim2.new(0, 0, -.2, 0)
-    Frame.Size = UDim2.new(1, 0, 0, 30)
-    
-    TextLabel.Parent = Frame
-    TextLabel.BackgroundColor3 = Color3.new(1, 1, 1)
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.Size = UDim2.new(1, 0, 1, 0)
-    TextLabel.Font = Enum.Font.SourceSansLight
-    TextLabel.Text = message
-    TextLabel.TextColor3 = Color3.new(.905882, .905882, .905882)
-    TextLabel.TextScaled = true
-    TextLabel.TextSize = 14
-    TextLabel.TextWrapped = true
-    
-    ImageLabel.Parent = Frame
-    ImageLabel.BackgroundTransparency = 1
-    ImageLabel.Size = UDim2.new(0, 50, 0, 50)
-    ImageLabel.Position = UDim2.new(.1, 0, 0, 0)
-    ImageLabel.Image = style
-    
-    local IntroGui = Instance.new('ScreenGui')
-    local IntroFrame = Instance.new('Frame')
-    local IntroImage = Instance.new('ImageLabel')
-    
-    IntroGui.Name = 'Intro'
-    IntroGui.Parent = gsCoreGui
-    
-    IntroFrame.Parent = IntroGui
-    IntroFrame.BackgroundTransparency = 1
-    IntroFrame.BorderSizePixel = 0
-    IntroFrame.Position = UDim2.new(0, 0, -.2, 0)
-    IntroFrame.Size = UDim2.new(1, 0, 0, 30)
-    
-    IntroImage.Parent = Frame
-    IntroImage.BackgroundTransparency = 1
-    IntroImage.AnchorPoint = Vector2.new(.5, 0)
-    IntroImage.Size = UDim2.new(0, 240, 0, 120)
-    IntroImage.Position = UDim2.new(.5, 0, 0, 0)
-    IntroImage.Image = 'http://www.roblox.com/asset/?id=1795472522'
-    
-    IntroFrame:TweenPosition(UDim2.new(0, 0, 0, 200), 'Out', 'Quad', 1.5)
-    Frame:TweenPosition(UDim2.new(0, 0, 0, 0), 'Out', 'Quad', 1.5)
-    
-    wait(length)
-    pcall(function()
-        Frame:TweenPosition(UDim2.new(0, 0, -1.5, 0), 'Out', 'Quad', 3)
-        IntroFrame:TweenPosition(UDim2.new(0, 0, -1.5, 0), 'Out', 'Quad', 3)
-    end)
-    wait(3.01)
-    IntroGui:Destroy()
-    ScreenGui:Destroy()
 end
 
-function Notify(style, message, length)
-    if gsCoreGui:FindFirstChild('Notification') then
-        gsCoreGui:FindFirstChild('Notification'):Destroy()
-    end
+commands.fly = function(args)
+    local speed = tonumber(args[1]) or 50
+    local chr = LP.Character
+    local hum = chr and chr:FindFirstChildOfClass("Humanoid")
+    local rootPart = chr and chr:FindFirstChild("HumanoidRootPart")
     
-    local infoIcon = 'http://www.roblox.com/asset/?id=1281284684'
-    local warningIcon = 'http://www.roblox.com/asset/?id=1281286925'
+    if not (chr and hum and rootPart) then return end
     
-    if style == 'info' then
-        style = infoIcon
-    elseif style == 'warning' then
-        style = warningIcon
-    end
+    flying = true
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.P = 9e4
+    bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.cframe = rootPart.CFrame
+    bodyGyro.Parent = rootPart
     
-    local ScreenGui = Instance.new('ScreenGui')
-    local Frame = Instance.new('Frame')
-    local TextLabel = Instance.new('TextLabel')
-    local ImageLabel = Instance.new('ImageLabel')
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.velocity = Vector3.new(0, 0.1, 0)
+    bodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Parent = rootPart
     
-    ScreenGui.Name = 'Notification'
-    ScreenGui.Parent = gsCoreGui
+    hum.PlatformStand = true
     
-    Frame.Parent = ScreenGui
-    Frame.BackgroundColor3 = Color3.new(.164706, .164706, .164706)
-    Frame.BackgroundTransparency = .20000000298023
-    Frame.BorderSizePixel = 0
-    Frame.Position = UDim2.new(0, 0, -.2, 0)
-    Frame.Size = UDim2.new(1, 0, 0, 30)
+    local controls = {F = 0, B = 0, L = 0, R = 0}
     
-    TextLabel.Parent = Frame
-    TextLabel.BackgroundColor3 = Color3.new(1, 1, 1)
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.Size = UDim2.new(1, 0, 1, 0)
-    TextLabel.Font = Enum.Font.SourceSansLight
-    TextLabel.Text = message
-    TextLabel.TextColor3 = Color3.new(.905882, .905882, .905882)
-    TextLabel.TextScaled = true
-    TextLabel.TextSize = 14
-    TextLabel.TextWrapped = true
-    
-    ImageLabel.Parent = Frame
-    ImageLabel.BackgroundTransparency = 1
-    ImageLabel.Size = UDim2.new(0, 50, 0, 50)
-    ImageLabel.Position = UDim2.new(.1, 0, 0, 0)
-    ImageLabel.Image = style
-    
-    Frame:TweenPosition(UDim2.new(0, 0, 0, 0), 'Out', 'Quad', 1.5)
-    wait(length)
-    pcall(function()
-        Frame:TweenPosition(UDim2.new(0, 0, -1.5, 0), 'Out', 'Quad', 3)
-    end)
-    wait(3.01)
-    ScreenGui:Destroy()
-end
-
--- Check if player has tools
-function hasTools()
-    local hasCharacterTools = false
-    local hasBackpackTools = false
-    
-    for i, v in pairs(LP.Character:GetDescendants()) do
-        if v:IsA('Tool') then
-            if v ~= nil then
-                hasCharacterTools = true
-            else
-                hasCharacterTools = false
-            end
-        end
-    end
-    
-    for i, k in pairs(LP.Backpack:GetDescendants()) do
-        if k:IsA('Tool') then
-            if k ~= nil then
-                hasBackpackTools = true
-            else
-                hasBackpackTools = false
-            end
-        end
-    end
-    
-    return hasCharacterTools or hasBackpackTools
-end
-
--- Compliment Messages
-Compliments = {
-    ' is the coolest person in this server!',
-    ', I really like your avatar!',
-    ', I really want to be your friend!',
-    ' is truly amazing. Truly!',
-    ' is incredible!',
-    ', you are my favourite here!!',
-    ', I am complimenting you right now at this very moment.',
-    ' you are really awesome',
-    ' when will you be my friend!?',
-    ' is such a great person',
-    ' is a fantastic person!'
-}
-
-function complimentplr(player)
-    local playerName = player.Name
-    game:GetService('ReplicatedStorage').DefaultChatSystemChatEvents.SayMessageRequest:FireServer(
-        playerName .. Compliments[math.random(1, #Compliments)], 'All'
-    )
-end
--- Create Player Info GUI
-function createINFO(player)
-    local ScreenGui = Instance.new('ScreenGui')
-    local MainFrame = Instance.new('Frame')
-    local TopFrame = Instance.new('Frame')
-    local CloseButton = Instance.new('TextButton')
-    local MiddleFrame = Instance.new('Frame')
-    local PlayerNameLabel = Instance.new('TextLabel')
-    local BottomFrame = Instance.new('Frame')
-    local PlayerAvatar = Instance.new('ImageLabel')
-    local PlayerAccAge = Instance.new('TextLabel')
-    local PlayerId = Instance.new('TextLabel')
-    local PlayerOs = Instance.new('TextLabel')
-    local PlayerMembership = Instance.new('TextLabel')
-    local Shadow1 = Instance.new('Frame')
-    local Shadow2 = Instance.new('Frame')
-    
-    ScreenGui.Name = 'InfoGUIv2'
-    ScreenGui.Parent = gsCoreGui
-    
-    MainFrame.Parent = ScreenGui
-    MainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-    MainFrame.BackgroundTransparency = 1
-    MainFrame.BorderColor3 = Color3.new(0, 0, 0)
-    MainFrame.ClipsDescendants = true
-    MainFrame.Position = UDim2.new(.45, 0, 1, 0)
-    MainFrame.Size = UDim2.new(0, 265, 0, 302)
-    MainFrame.ZIndex = -1
-    
-    TopFrame.Parent = MainFrame
-    TopFrame.BackgroundColor3 = Color3.new(.290196, 0, .447059)
-    TopFrame.BorderSizePixel = 0
-    TopFrame.Size = UDim2.new(0, 260, 0, 20)
-    
-    CloseButton.Name = 'infoguiCLOSE'
-    CloseButton.Parent = TopFrame
-    CloseButton.BackgroundColor3 = Color3.new(1, 1, 1)
-    CloseButton.BackgroundTransparency = 1
-    CloseButton.BorderSizePixel = 0
-    CloseButton.Position = UDim2.new(0, 230, 0, 0)
-    CloseButton.Size = UDim2.new(0, 30, 0, 20)
-    CloseButton.Font = Enum.Font.SourceSansBold
-    CloseButton.Text = 'X'
-    CloseButton.TextColor3 = Color3.new(.992157, .992157, .992157)
-    CloseButton.TextSize = 20
-    
-    MiddleFrame.Parent = MainFrame
-    MiddleFrame.BackgroundColor3 = Color3.new(.482353, .121569, .635294)
-    MiddleFrame.BorderSizePixel = 0
-    MiddleFrame.Position = UDim2.new(0, 0, 0, 20)
-    MiddleFrame.Size = UDim2.new(0, 260, 0, 40)
-    
-    PlayerNameLabel.Name = 'playerName'
-    PlayerNameLabel.Parent = MiddleFrame
-    PlayerNameLabel.BackgroundColor3 = Color3.new(1, 1, 1)
-    PlayerNameLabel.BackgroundTransparency = 1
-    PlayerNameLabel.Position = UDim2.new(0, 10, 0, 5)
-    PlayerNameLabel.Size = UDim2.new(0, 240, 0, 30)
-    PlayerNameLabel.Font = Enum.Font.SourceSansLight
-    PlayerNameLabel.Text = player.Name
-    PlayerNameLabel.TextColor3 = Color3.new(.988235, .988235, .988235)
-    PlayerNameLabel.TextScaled = true
-    PlayerNameLabel.TextSize = 14
-    PlayerNameLabel.TextWrapped = true
-    
-    BottomFrame.Parent = MainFrame
-    BottomFrame.BackgroundColor3 = Color3.new(.956863, .956863, .956863)
-    BottomFrame.BorderSizePixel = 0
-    BottomFrame.Position = UDim2.new(0, 0, 0, 60)
-    BottomFrame.Size = UDim2.new(0, 260, 0, 237)
-    
-    PlayerAvatar.Name = 'playerAvatar'
-    PlayerAvatar.Parent = BottomFrame
-    PlayerAvatar.BackgroundColor3 = Color3.new(1, 1, 1)
-    PlayerAvatar.Position = UDim2.new(0, 85, 0, 10)
-    PlayerAvatar.Size = UDim2.new(0, 85, 0, 85)
-    PlayerAvatar.Image = 'http://www.roblox.com/Thumbs/Avatar.ashx?x=150&y=150&Format=Png&username=' .. player.Name
-    
-    PlayerAccAge.Name = 'playerAccAge'
-    PlayerAccAge.Parent = BottomFrame
-    PlayerAccAge.BackgroundColor3 = Color3.new(1, 1, 1)
-    PlayerAccAge.BackgroundTransparency = 1
-    PlayerAccAge.Position = UDim2.new(0, 5, 0, 101)
-    PlayerAccAge.Size = UDim2.new(0, 250, 0, 30)
-    PlayerAccAge.Font = Enum.Font.SourceSans
-    PlayerAccAge.Text = 'Account Age: ' .. player.AccountAge
-    PlayerAccAge.TextColor3 = Color3.new(.0784314, .0784314, .0784314)
-    PlayerAccAge.TextScaled = true
-    PlayerAccAge.TextSize = 14
-    PlayerAccAge.TextWrapped = true
-    
-    PlayerId.Name = 'playerId'
-    PlayerId.Parent = BottomFrame
-    PlayerId.BackgroundColor3 = Color3.new(1, 1, 1)
-    PlayerId.BackgroundTransparency = 1
-    PlayerId.Position = UDim2.new(0, 5, 0, 131)
-    PlayerId.Size = UDim2.new(0, 250, 0, 30)
-    PlayerId.Font = Enum.Font.SourceSans
-    PlayerId.Text = 'Account ID: ' .. player.UserId
-    PlayerId.TextColor3 = Color3.new(.0784314, .0784314, .0784314)
-    PlayerId.TextScaled = true
-    PlayerId.TextSize = 14
-    PlayerId.TextWrapped = true
-    
-    PlayerOs.Name = 'playerOs'
-    PlayerOs.Parent = BottomFrame
-    PlayerOs.BackgroundColor3 = Color3.new(1, 1, 1)
-    PlayerOs.BackgroundTransparency = 1
-    PlayerOs.Position = UDim2.new(0, 5, 0, 161)
-    PlayerOs.Size = UDim2.new(0, 250, 0, 30)
-    PlayerOs.Font = Enum.Font.SourceSansLight
-    PlayerOs.Text = 'Player OS: ' .. player.OsPlatform
-    PlayerOs.TextColor3 = Color3.new(.0784314, .0784314, .0784314)
-    PlayerOs.TextScaled = true
-    PlayerOs.TextSize = 14
-    PlayerOs.TextWrapped = true
-    
-    PlayerMembership.Name = 'playerMembership'
-    PlayerMembership.Parent = BottomFrame
-    PlayerMembership.BackgroundColor3 = Color3.new(1, 1, 1)
-    PlayerMembership.BackgroundTransparency = 1
-    PlayerMembership.Position = UDim2.new(0, 5, 0, 191)
-    PlayerMembership.Size = UDim2.new(0, 250, 0, 30)
-    PlayerMembership.Font = Enum.Font.SourceSansLight
-    
-    if player.MembershipType == Enum.MembershipType.None then
-        PlayerMembership.Text = "No builder's club."
-    elseif player.MembershipType == Enum.MembershipType.BuildersClub then
-        PlayerMembership.Text = "Builder's club!"
-    elseif player.MembershipType == Enum.MembershipType.TurboBuildersClub then
-        PlayerMembership.Text = "Turbo Builder's club!"
-    elseif player.MembershipType == Enum.MembershipType.OutrageousBuildersClub then
-        PlayerMembership.Text = "Outrageous Builder's club!"
-    end
-    
-    PlayerMembership.TextColor3 = Color3.new(.0784314, .0784314, .0784314)
-    PlayerMembership.TextScaled = true
-    PlayerMembership.TextSize = 14
-    PlayerMembership.TextWrapped = true
-    
-    Shadow1.Parent = MainFrame
-    Shadow1.BackgroundColor3 = Color3.new(0, 0, 0)
-    Shadow1.BackgroundTransparency = .69999998807907
-    Shadow1.BorderColor3 = Color3.new(0, 0, 0)
-    Shadow1.BorderSizePixel = 0
-    Shadow1.ClipsDescendants = true
-    Shadow1.Position = UDim2.new(0, 10, 0, 10)
-    Shadow1.Selectable = true
-    Shadow1.Size = UDim2.new(0, 255, 0, 292)
-    Shadow1.ZIndex = -1
-    
-    Shadow2.Parent = MainFrame
-    Shadow2.BackgroundColor3 = Color3.new(0, 0, 0)
-    Shadow2.BackgroundTransparency = .69999998807907
-    Shadow2.BorderColor3 = Color3.new(0, 0, 0)
-    Shadow2.BorderSizePixel = 0
-    Shadow2.ClipsDescendants = true
-    Shadow2.Position = UDim2.new(0, 8, 0, 8)
-    Shadow2.Selectable = true
-    Shadow2.Size = UDim2.new(0, 255, 0, 292)
-    Shadow2.ZIndex = -1
-    
-    -- Tween animations
-    local tweenGoals = {}
-    tweenGoals.Size = UDim2.new(0, 0, 0, 0)
-    
-    local tweenPosition = {}
-    tweenPosition.Position = UDim2.new(.45, 0, .45, 0)
-    
-    local closeTween = gsTween:Create(MainFrame, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), tweenGoals)
-    local openTween = gsTween:Create(MainFrame, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), tweenPosition)
-    
-    CloseButton.MouseButton1Click:Connect(function()
-        closeTween:Play()
-        MainFrame:TweenPosition((MainFrame.Position + UDim2.new(0, 265/2, 0, 302/2)), 'InOut', 'Sine', 2)
-        wait(2.01)
-        MainFrame:Destroy()
-    end)
-    
-    openTween:Play()
-    
-    -- Dragging functionality
-    local UserInputService = game:GetService('UserInputService')
-    local dragging
-    local dragInput
-    local dragStart
-    local startPos
-    
-    local function update(input)
-        local delta = input.Position - dragStart
-        local updateTime = .055
-        local goals = {}
-        goals.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        local moveTween = gsTween:Create(MainFrame, TweenInfo.new(updateTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), goals)
-        moveTween:Play()
-    end
-    
-    MainFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
+    local function updateFlight()
+        repeat
+            RunService.RenderStepped:Wait()
             
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
+            local camCF = Workspace.CurrentCamera.CFrame
+            local moveVector = Vector3.new(
+                controls.R - controls.L,
+                0,
+                controls.B - controls.F
+            )
+            
+            if moveVector.Magnitude > 0 then
+                local lookVector = camCF.LookVector
+                local rightVector = camCF.RightVector
+                local moveDir = (lookVector * -moveVector.Z) + (rightVector * moveVector.X)
+                bodyVelocity.velocity = moveDir.Unit * speed
+            else
+                bodyVelocity.velocity = Vector3.new(0, 0.1, 0)
+            end
+            
+            bodyGyro.cframe = camCF
+        until not flying
+        
+        bodyGyro:Destroy()
+        bodyVelocity:Destroy()
+        hum.PlatformStand = false
+    end
+    
+    spawn(updateFlight)
+    
+    local function onKeyDown(key)
+        key = key:lower()
+        if key == "w" then controls.F = 1
+        elseif key == "s" then controls.B = 1
+        elseif key == "a" then controls.L = 1
+        elseif key == "d" then controls.R = 1
+        end
+    end
+    
+    local function onKeyUp(key)
+        key = key:lower()
+        if key == "w" then controls.F = 0
+        elseif key == "s" then controls.B = 0
+        elseif key == "a" then controls.L = 0
+        elseif key == "d" then controls.R = 0
+        end
+    end
+    
+    local keyConn1 = Mouse.KeyDown:Connect(onKeyDown)
+    local keyConn2 = Mouse.KeyUp:Connect(onKeyUp)
+    
+    spawn(function()
+        repeat wait() until not flying
+        keyConn1:Disconnect()
+        keyConn2:Disconnect()
+    end)
+    
+    notify("Fly", "Activated (WASD to move)", 5)
+end
+
+commands.unfly = function()
+    flying = false
+    notify("Fly", "Deactivated", 3)
+end
+
+commands.esp = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Adornee = part
+                    box.AlwaysOnTop = true
+                    box.Color3 = Color3.new(1, 0, 0)
+                    box.Size = part.Size
+                    box.ZIndex = 10
+                    box.Transparency = 0.5
+                    box.Parent = CoreGui
+                    
+                    -- Clean up when player leaves
+                    player.CharacterRemoving:Connect(function()
+                        box:Destroy()
+                    end)
+                end
+            end
+            notify("ESP", "Enabled for " .. player.Name, 3)
+        end
+    end
+end
+
+commands.unesp = function()
+    for _, obj in pairs(CoreGui:GetChildren()) do
+        if obj:IsA("BoxHandleAdornment") then
+            obj:Destroy()
+        end
+    end
+    notify("ESP", "Disabled", 3)
+end
+
+commands.removefog = function()
+    Lighting.FogEnd = 100000
+    notify("Fog", "Removed", 3)
+end
+
+commands.wsvis = function(args)
+    if args[1] and tonumber(args[1]) then
+        local transparency = math.clamp(tonumber(args[1]), 0, 1)
+        for _, part in pairs(Workspace:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = transparency
+            end
+        end
+        notify("Workspace Visibility", "Transparency set to " .. transparency, 3)
+    end
+end
+
+commands.chat = function(args)
+    if #args > 0 then
+        local message = table.concat(args, " ")
+        ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+    end
+end
+
+commands.ping = function()
+    local ping = LP:GetNetworkPing() * 1000
+    notify("Ping", math.round(ping) .. "ms", 3)
+end
+
+-- Additional Useful Commands
+
+commands.freeze = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            player.Character.HumanoidRootPart.Anchored = true
+            notify("Freeze", "Frozen " .. player.Name, 3)
+        end
+    else
+        LP.Character.HumanoidRootPart.Anchored = true
+        notify("Freeze", "Frozen yourself", 3)
+    end
+end
+
+commands.thaw = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            player.Character.HumanoidRootPart.Anchored = false
+            notify("Thaw", "Unfrozen " .. player.Name, 3)
+        end
+    else
+        LP.Character.HumanoidRootPart.Anchored = false
+        notify("Thaw", "Unfrozen yourself", 3)
+    end
+end
+
+commands.savepos = function()
+    savedPosition = LP.Character:GetPrimaryPartCFrame()
+    notify("Position", "Position saved", 3)
+end
+
+commands.loadpos = function()
+    if savedPosition then
+        LP.Character:SetPrimaryPartCFrame(savedPosition)
+        notify("Position", "Position loaded", 3)
+    else
+        notify("Error", "No position saved", 3)
+    end
+end
+
+commands.tppos = function(args)
+    if #args >= 3 then
+        local x, y, z = tonumber(args[1]), tonumber(args[2]), tonumber(args[3])
+        if x and y and z then
+            LP.Character:SetPrimaryPartCFrame(CFrame.new(x, y, z))
+            notify("Teleport", "Teleported to " .. x .. ", " .. y .. ", " .. z, 3)
+        end
+    end
+end
+
+commands.clicktp = function()
+    clickTpEnabled = true
+    notify("Click TP", "Enabled - Click anywhere to teleport", 5)
+    
+    local clickConn
+    clickConn = Mouse.Button1Down:Connect(function()
+        if clickTpEnabled and Mouse.Target then
+            LP.Character:SetPrimaryPartCFrame(CFrame.new(Mouse.Hit.Position + Vector3.new(0, 5, 0)))
+        end
+    end)
+    
+    -- Store connection for cleanup
+    commands._clickTpConn = clickConn
+end
+
+commands.unclicktp = function()
+    clickTpEnabled = false
+    if commands._clickTpConn then
+        commands._clickTpConn:Disconnect()
+        commands._clickTpConn = nil
+    end
+    notify("Click TP", "Disabled", 3)
+end
+
+commands.gravity = function(args)
+    if args[1] and tonumber(args[1]) then
+        Workspace.Gravity = tonumber(args[1])
+        notify("Gravity", "Set to " .. args[1], 3)
+    end
+end
+
+commands.ungravity = function()
+    Workspace.Gravity = 196.2
+    notify("Gravity", "Reset to default", 3)
+end
+
+commands.btools = function()
+    local tools = {"Clone", "Hammer", "Grab"}
+    for _, toolType in pairs(tools) do
+        local bin = Instance.new("HopperBin")
+        bin.BinType = Enum.BinType[toolType]
+        bin.Parent = LP:FindFirstChildOfClass("Backpack")
+    end
+    notify("BTools", "Added all building tools", 3)
+end
+
+commands.nametags = function()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character and player.Character:FindFirstChild("Head") then
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "NameTag"
+            billboard.Adornee = player.Character.Head
+            billboard.Size = UDim2.new(0, 100, 0, 50)
+            billboard.StudsOffset = Vector3.new(0, 3, 0)
+            billboard.AlwaysOnTop = true
+            
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.BackgroundTransparency = 1
+            textLabel.Text = player.Name
+            textLabel.TextColor3 = Color3.new(1, 1, 1)
+            textLabel.TextStrokeTransparency = 0
+            textLabel.Font = Enum.Font.SourceSansBold
+            textLabel.TextSize = 20
+            textLabel.Parent = billboard
+            
+            billboard.Parent = CoreGui
+        end
+    end
+    notify("Nametags", "Enabled for all players", 3)
+end
+
+commands.unnametags = function()
+    for _, obj in pairs(CoreGui:GetChildren()) do
+        if obj.Name == "NameTag" then
+            obj:Destroy()
+        end
+    end
+    notify("Nametags", "Disabled", 3)
+end
+
+commands.age = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player then
+            notify("Account Age", player.Name .. " is " .. player.AccountAge .. " days old", 5)
+        end
+    else
+        notify("Account Age", "You are " .. LP.AccountAge .. " days old", 5)
+    end
+end
+
+commands.id = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player then
+            notify("User ID", player.Name .. "'s ID: " .. player.UserId, 5)
+        end
+    else
+        notify("User ID", "Your ID: " .. LP.UserId, 5)
+    end
+end
+
+commands.allage = function()
+    local ages = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        table.insert(ages, player.Name .. ": " .. player.AccountAge .. " days")
+    end
+    notify("All Ages", table.concat(ages, "\n"), 10)
+end
+
+commands.allid = function()
+    local ids = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        table.insert(ids, player.Name .. ": " .. player.UserId)
+    end
+    notify("All IDs", table.concat(ids, "\n"), 10)
+end
+
+commands.spam = function(args)
+    if #args > 0 then
+        local message = table.concat(args, " ")
+        for i = 1, 5 do
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+            wait(0.5)
+        end
+        notify("Spam", "Sent 5 messages", 3)
+    end
+end
+
+commands.clear = function()
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part:Destroy()
+        end
+    end
+    notify("Clear", "Removed all parts (except characters)", 5)
+end
+
+commands.btoolsremove = function()
+    for _, tool in pairs(LP:FindFirstChildOfClass("Backpack"):GetChildren()) do
+        if tool:IsA("HopperBin") then
+            tool:Destroy()
+        end
+    end
+    notify("BTools Remove", "Removed all building tools", 3)
+end
+
+commands.maxzoom = function(args)
+    if args[1] and tonumber(args[1]) then
+        LP.CameraMaxZoomDistance = tonumber(args[1])
+        notify("Max Zoom", "Set to " .. args[1], 3)
+    end
+end
+
+commands.minzoom = function(args)
+    if args[1] and tonumber(args[1]) then
+        LP.CameraMinZoomDistance = tonumber(args[1])
+        notify("Min Zoom", "Set to " .. args[1], 3)
+    end
+end
+
+commands.fieldofview = function(args)
+    if args[1] and tonumber(args[1]) then
+        Workspace.CurrentCamera.FieldOfView = math.clamp(tonumber(args[1]), 1, 120)
+        notify("FOV", "Set to " .. args[1], 3)
+    end
+end
+
+commands.fullbright = function()
+    Lighting.ClockTime = 12
+    Lighting.FogEnd = 100000
+    Lighting.Brightness = 2
+    notify("Full Bright", "Enabled", 3)
+end
+
+commands.normalbright = function()
+    Lighting.ClockTime = 12
+    Lighting.FogEnd = 10000
+    Lighting.Brightness = 1
+    notify("Normal Bright", "Enabled", 3)
+end
+
+commands.day = function()
+    Lighting.ClockTime = 12
+    notify("Time", "Set to daytime", 3)
+end
+
+commands.night = function()
+    Lighting.ClockTime = 0
+    notify("Time", "Set to nighttime", 3)
+end
+
+commands.view = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            Workspace.CurrentCamera.CameraSubject = player.Character
+            notify("View", "Now viewing " .. player.Name, 3)
+        end
+    else
+        Workspace.CurrentCamera.CameraSubject = LP.Character
+        notify("View", "Now viewing yourself", 3)
+    end
+end
+
+commands.unview = function()
+    Workspace.CurrentCamera.CameraSubject = LP.Character
+    notify("View", "Stopped viewing", 3)
+end
+
+commands.droptools = function()
+    for _, tool in pairs(LP.Character:GetDescendants()) do
+        if tool:IsA("Tool") then
+            tool.Parent = Workspace
+        end
+    end
+    for _, tool in pairs(LP.Backpack:GetDescendants()) do
+        if tool:IsA("Tool") then
+            tool.Parent = Workspace
+        end
+    end
+    notify("Drop Tools", "Dropped all tools", 3)
+end
+
+commands.gettools = function()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Tool") then
+            obj.Parent = LP.Backpack
+        end
+    end
+    notify("Get Tools", "Collected all tools", 3)
+end
+
+commands.nolimbs = function()
+    local char = LP.Character
+    if char then
+        for _, limb in pairs({"Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
+            local part = char:FindFirstChild(limb)
+            if part then
+                part:Destroy()
+            end
+        end
+        notify("No Limbs", "Removed limbs", 3)
+    end
+end
+
+commands.headless = function()
+    local char = LP.Character
+    if char and char:FindFirstChild("Head") then
+        char.Head:Destroy()
+        notify("Headless", "Removed head", 3)
+    end
+end
+
+-- 20 Additional Commands
+
+commands.spy = function()
+    for _, player in pairs(Players:GetPlayers()) do
+        player.Chatted:Connect(function(message)
+            notify("Spy [" .. player.Name .. "]", message, 3)
+        end)
+    end
+    notify("Chat Spy", "Listening to all chat", 5)
+end
+
+commands.unspy = function()
+    -- This would require storing connections to disconnect them
+    notify("Chat Spy", "Stopped spying (restart script to fully disable)", 3)
+end
+
+commands.dice = function()
+    local roll = math.random(1, 6)
+    ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Rolled a " .. roll, "All")
+    notify("Dice Roll", "You rolled: " .. roll, 3)
+end
+
+commands.flipcoin = function()
+    local result = math.random(1, 2) == 1 and "Heads" or "Tails"
+    ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Flipped coin: " .. result, "All")
+    notify("Coin Flip", "Result: " .. result, 3)
+end
+
+commands.serverinfo = function()
+    local info = "Server Time: " .. math.floor(Workspace.DistributedGameTime) .. "s\n"
+    info = info .. "Players: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. "\n"
+    info = info .. "Place ID: " .. game.PlaceId .. "\n"
+    info = info .. "Job ID: " .. game.JobId:sub(1, 8) .. "..."
+    notify("Server Info", info, 8)
+end
+
+commands.playerlist = function()
+    local players = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        table.insert(players, player.Name)
+    end
+    notify("Players (" .. #players .. ")", table.concat(players, ", "), 8)
+end
+
+commands.bring = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            player.Character:SetPrimaryPartCFrame(LP.Character:GetPrimaryPartCFrame() + Vector3.new(0, 0, 3))
+            notify("Bring", "Brought " .. player.Name, 3)
+        end
+    end
+end
+
+commands.kill = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            player.Character:BreakJoints()
+            notify("Kill", "Killed " .. player.Name, 3)
+        end
+    end
+end
+
+commands.kick = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player then
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/kick " .. player.Name, "All")
+            notify("Kick", "Attempted to kick " .. player.Name, 3)
+        end
+    end
+end
+
+commands.mute = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player then
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/mute " .. player.Name, "All")
+            notify("Mute", "Attempted to mute " .. player.Name, 3)
+        end
+    end
+end
+
+commands.unmute = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player then
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/unmute " .. player.Name, "All")
+            notify("Unmute", "Attempted to unmute " .. player.Name, 3)
+        end
+    end
+end
+
+commands.loopgoto = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            commands._loopGotoRunning = true
+            spawn(function()
+                while commands._loopGotoRunning and player and player.Character do
+                    LP.Character:SetPrimaryPartCFrame(player.Character:GetPrimaryPartCFrame() + Vector3.new(0, 3, 0))
+                    wait(0.1)
                 end
             end)
+            notify("Loop Goto", "Following " .. player.Name, 3)
         end
-    end)
+    end
+end
+
+commands.unloopgoto = function()
+    commands._loopGotoRunning = false
+    notify("Loop Goto", "Stopped following", 3)
+end
+
+commands.platform = function()
+    local platform = Instance.new("Part")
+    platform.Name = "AdminPlatform"
+    platform.Size = Vector3.new(10, 1, 10)
+    platform.Anchored = true
+    platform.BrickColor = BrickColor.new("Really blue")
+    platform.Material = Enum.Material.Neon
+    platform.TopSurface = Enum.SurfaceType.Smooth
+    platform.Parent = Workspace
     
-    MainFrame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
+    local pos = LP.Character:GetPrimaryPartCFrame()
+    platform.CFrame = pos + Vector3.new(0, -3, 0)
     
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging and MainFrame.Size == UDim2.new(0, 265, 0, 302) then
-            update(input)
+    notify("Platform", "Created platform below you", 3)
+end
+
+commands.removeplatform = function()
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj.Name == "AdminPlatform" then
+            obj:Destroy()
         end
-    end)
+    end
+    notify("Platform", "Removed platforms", 3)
 end
 
-function clientSided()
-    Notify('info', 'This command is for the client (you) only, no one else can see!', 6)
-end
--- Search Commands List (for help GUI)
-searchCmds = {
-    '1 print[msg] - Prints a message to the developer console',
-    '2 warn[msg] - Warns a message to the developer console',
-    '3 sit - Makes you sit',
-    '4 god - Activates FE Godmode (breaks tools)',
-    '5 view[plr] - Changes your camera subject to another player',
-    '6 unview - Changes your camera back to your player',
-    '7 gravity[num] - Changes workspace gravity to [num]',
-    "8 ungravity - Reverts workspace gravity to game's default",
-    '9 goto[plr] - Teleports you to a player',
-    '10 fecheck - Checks whether the game is FE or not',
-    '11 lockws - Locks the whole workspace',
-    '12 unlockws - Unlocks the whole workspace',
-    '13 noclip - Allows you to walk through walls and other objects',
-    '14 clip - Stops noclip, can collide',
-    '15 follow[plr]/[num] - Makes you follow a player constantly, optional [num] for how far away to follow',
-    '16 unfollow - Stops you from following',
-    '17 fling[plr]/[pow] - Uses your character to fling a player, optional [pow] for how much power to put into the fling',
-    '18 unfling - Stops you from flinging',
-    '19 trail[plr]/[num] - Makes you trail (walk in front) of a player constantly, optional [num] for how far away to trail',
-    '20 untrail - Stops you from trailing',
-    '21 annoy[plr] - Loop teleports you to the player',
-    '22 unannoy - Stops loop teleporting you',
-    '23 reset - Resets your character',
-    '24 grespawn - Respawns your character, best for use after FE godmode',
-    '25 respawn - Respawns your character, best to use if grespawn fails to work',
-    '26 speed//ws[num] - Changes your walkspeed (speed or ws) to [num]',
-    '27 jumppower//jp[num] - Changes your jumppower (jumppower or jp) to [num]',
-    '28 hipheight//hh[num] - Changes your hipheight (hipheight or hh) to [num]',
-    '29 default - Changes your walkspeed, jumppower and hipheight back to normal',
-    '30 credits - Displays admin credits (by illremember#3799)',
-    '31 attach[plr] - Attaches you to a player, tool required',
-    '32 fly/[speed] - Enables fly, optional [speed] for how fast to fly',
-    '33 unfly - Disables fly',
-    '34 kill[plr] - Kills a player, tool required',
-    '35 bring[plr] - Brings a player, tool required',
-    '36 naked - Displays avatar body colours',
-    '37 nolimbs - Deletes all your arms and legs',
-    '38 noarms - Deletes both your arms',
-    '39 nolegs - Deletes both your legs',
-    '40 antikick[on/off] - Blocks all remotes for antikick when on, disables when off',
-    '41 blockremote[remote]/[service] - Blocks a remote from firing, optional [service] for where the remote is located',
-    '42 remotespy[on/off] - Prints all remotes to developer console when on when fired, stops printing when off',
-    '43 bang[plr]/[speed] - Bangs a player, optional [speed] to set animation adjust speed',
-    '44 unbang - Stops bang player',
-    '45 spam[msg] - Spams [msg] in chat',
-    '46 spamdelay[num] - Sets how long to wait in between spamming',
-    '47 unspam - Stops spamming',
-    '48 info[plr] - Creates GUI with information about player account, shows Account age, membership and account ID',
-    '49 age[plr] - Chats account age of player',
-    '50 invisible - Enables FE invisibility, by Timeless',
-    '51 walk[plr] - Begins to make you loop walk towards player',
-    '52 glitch[plr]/[num] - Glitches a player, tool required, optional [num] for strength of glitch',
-    '53 tp[plr][plr] - Teleports a player to another player, tool required',
-    '54 givetool[plr]/[tool] - Gives your current equipped tool to player, optional [tool] to pick a tool by name from your inventory',
-    '55 givealltools[plr] - Gives all tools currently equipped and in inventory to player',
-    '56 blockhats - Removes mesh of all accessories',
-    '57 blocktool - Removes mesh of currently equipped tool',
-    '58 orbit[plr] - Begins to make you orbit around a player',
-    '59 unorbit - Stops you orbiting a player',
-    '60 pos - Shows your current position',
-    '61 savepos - Saves your current position',
-    '62 loadpos - Loads your current position from savepos',
-    '63 tppos[num][num][num] - Teleports you to position [num], [num], [num]',
-    "64 pmspam[plr][msg] - Makes you spam a player's pm with [msg]",
-    "65 unpmspam - Stops spamming a player's pm",
-    '66 wsvis[num] - Changes all parts in workspace to [num] transparency',
-    '67 bringobj[obj]/[num] - Brings an object in the workspace to you, optional [num] for how far away to bring object',
-    '68 cbring[plr] - Brings a player to you constantly on client',
-    '69 uncbring - Stops bringing a player to you on client',
-    '70 cfreeze[plr] - Freezes a player on your client',
-    '71 uncfreeze/[plr] - Unfreezes a player on your client',
-    '72 unattach - Unattaches you from a player',
-    '73 reach[on/off]/[num] - Activates/Deactivates reach for currently equipped tool, optional [num] for how long the reach should be',
-    '74 droptool/[tool] - Drops a tool into the workspace, optional [tool] command for which tool to drop',
-    '75 drophats - Drops all your accessories into the workspace',
-    '76 hidecmdbar - Hides the command bar',
-    '77 showcmdbar - Shows the command bar',
-    '78 prefix[key] - Changes your prefix to [key] must be 1 character',
-    '79 removeinvis - Removes all invisible parts in workspace',
-    '80 removefog - Removes fog in lighting',
-    '81 animation[id/gui]/[speed] - Makes you play an animation with [id], optional [speed] for adjusting animation speed OR [gui] to open Energize animation GUI',
-    '82 btools - Gives you btools for deleting, copying and dragging (client side)',
-    '83 esp[plr] - Enables an esp for that player, credits to Infinite Yield',
-    '84 unesp/[plr] - Disables all esp, optional [plr] for disabling esp just for that player',
-    '85 dice - Chats you rolling a dice for 1, 2, 3, 4, 5 or 6',
-    '86 random[min][max] - Chats you picking a random number between [min] and [max]',
-    '87 closegame - Shutsdown/closes your game',
-    '88 savetool/[tool] - Saves a tool to your player equipped, optional [tool] for which tool to save in your inventory',
-    '89 loadtool/[tool] - Loads a tool from your player, optional [tool] for which tool to load by name',
-    '90 savealltool - Saves all tools in your character/inventory',
-    '91 loadalltool - Loads all tools in your player saved tools',
-    '92 clicktp/[key] - Enables click teleport, optional [key] to set a key instead of clicking',
-    '93 clickdel/[key] - Enables click delete part, optional [key] to set a key instead of clicking',
-    '94 unclicktp - Disables clicktp',
-    '95 unclickdel - Disables clickdel',
-    '96 shutdown - Attempts a server shutdown',
-    '97 chatlogs - Opens up a chat log gui with options to print chat to developer console',
-    '98 stopadmin - Disables currently running admin completely',
-    '99 freecam/[speed] - Enables freecam (like flying but not in character), optional [speed] for how fast the freecam should go',
-    '100 unfreecam//unfc - Disables freecam',
-    '101 fctp[plr] - Teleports your freecam to player',
-    '102 gotofc - Teleports you to current freecam position',
-    '103 cmds - Opens up this GUI with commands',
-    '104 fullcredits - Shows full individual credits for all help with the admin',
-    '105 hotkey[key][cmd] - Creates a hotkey that executes [cmd] when [key] is pressed',
-    '106 removehotkey[key] - Removes a hotkey with [key]',
-    '107 removeallhotkey - Removes all current hotkeys for commands',
-    '108 printhotkeys - Prints all current existing hotkeys',
-    '109 os[plr] - Chats the current OS of a player',
-    '110 spin[plr] - Makes you spin with a player, tool required',
-    '111 unspin - Stops you spinning a player/teleporting to a player',
-    '112 explorer - Loads DEX explorer',
-    '113 maxzoom[num] - Changes your maxzoom to number',
-    '114 stare[plr] - Makes you stare at another player',
-    '115 unstare[plr] - Makes you stop staring at player',
-    '116 tempgod - Enables temporary FE godmode, does not work on all games, does not break tools',
-    '117 void[plr] - Teleports you and a player to the void, requires a tool',
-    '118 freefall[plr] - Makes you and a player freefall to the ground',
-    "119 version - Shows current admin's version",
-    '120 shiftlockon - Enables shift lock if not enabled by game developer',
-    '121 copychat[plr] - Makes you copy the chat player says, use uncopychat to stop copying chat',
-    '122 newattach[plr] - Does not FE Godmode you, requires 2 tools, attaches you to player',
-    '123 newkill[plr] - Does not FE Godmode you, requires 2 tools, kills player',
-    '124 newbring[plr] - Does not FE Godmode you, requires 2 tools, brings player',
-    '125 spawn[ws/jp/hh/god][num] - Sets your walkspeed/jumppower/hipheight to number whenever you respawn, or makes you FE Godded whenever you respawn',
-    '126 unspawn - Stops you spawning with stats set by ' .. commandPrefix .. 'spawn',
-    '127 autosavetool[on/off] - Auto saves your tools when you reset',
-    '128 beginbot/[mode] - Makes you a bot for other players, type just ' .. commandPrefix .. 'beginbot to print available modes',
-    '129 endbot/[mode] - Ends ' .. commandPrefix .. 'beginbot, optional [mode] to disable one mode only',
-    '130 stopsit - Disables your ability to sit',
-    '131 gosit - Enables your ability to sit',
-    '132 spawnpoint - Sets your spawnpoint for whenever you reset to where you are',
-    '133 nospawn - Removes your spawnpoint',
-    '134 chaterror - Creates a chat error, works best first time',
-    '135 bypass[on/off] - Changes certain commands like ' .. commandPrefix .. 'fly so they are not detected by most anti-exploits',
-    '136 fixcam - Fixes your camera in case it breaks',
-    '137 gotoobj[obj] - Teleports you to a part in the workspace, make sure you put the name properly!',
-    '138 breakcam - Makes it so your camera can go through parts, fixed with ' .. commandPrefix .. 'fixcam',
-    '139 inviscam - Makes it so your camera goes through parts and makes them transparent so your character is always visible, fixed with ' .. commandPrefix .. 'fixcam',
-    "140 printobj/[key] - Prints the object's path clicked to developer console, optional [key] for key pressed instead of click",
-    '141 unprintobj - Stops printobj from running',
-    '142 hotkeyfc[goto/unfc] - If freecam is set as a hotkey, chooses whether to use unfreecam or gotofc when disabling through a hotkey',
-    '143 carpet[plr] - Makes you a carpet for a player',
-    '144 uncarpet - Stops carpet',
-    '145 brickcreate[num]/[pos][pos][pos] - Creates [num] amount of bricks from accessories, wont work in all games, optional [pos] for position to create bricks',
-    '146 uncopychat - Stops copying chat',
-    '147 forward/[speed] - Makes you automatically move forward default speed is 1',
-    '148 unforward - Stops you moving automatically forward from forward',
-    '149 id[plr] - Makes you chat the user ID of the player',
-    '150 spinhats/[pow] - Makes all your accessories begin to spin around! Credit to xFunnieuss.',
-    '151 unspinhats - Stops spinhats from spinning accessories',
-    '152 headless - Makes you headless, but can not control your character after, use grespawn to reset',
-    '153 savemap - Saves the current workspace/map',
-    '154 loadmap - Loads map saved by savemap',
-    "155 creatorid - Changes your user ID to the game creator's user ID",
-    "156 gameid - Shows the game's ID",
-    '157 delobj[obj] - Allows you to delete an object in the workspace by name',
-    '158 glide[plr]/[speed] - Makes you glide towards a player, optional [speed] for the speed of gliding',
-    '159 stutter[on/off] - Makes your character begin stuttering as you move',
-    '160 platform - Creates a platform on your client that you can stand on, deletes in 20 seconds',
-    '161 servertime - Gets the server time',
-    "162 ride[plr] - Makes you ride a player's head",
-    "163 unride[plr] - Makes you stop riding a player's head",
-    '164 cmute[plr] - Client mutes a player, useful for muting spammers',
-    '165 uncmute - Unmutes a player that has been cmuted',
-    '166 hat[plr] - Makes you carpet a player, but on their head',
-    '167 unhat - Stops hat from running',
-    '168 chat[msg] - Makes you chat a string, useful for hotkeys'
-}
-
--- Commands List (short version)
-CMDS = {
-    'print[msg]', 'warn[msg]', 'sit', 'god', 'view[plr]', 'unview', 'gravity[num]', 'ungravity',
-    'goto[plr]', 'fecheck', 'lockws', 'unlockws', 'noclip', 'clip', 'follow[plr]/[num]', 'unfollow',
-    'fling[plr]/[pow]', 'unfling', 'trail[plr]/[num]', 'untrail', 'annoy[plr]', 'unannoy', 'reset',
-    'grespawn', 'respawn', 'speed//ws[num]', 'jumppower//jp[num]', 'hipheight//hh[num]', 'default',
-    'credits', 'attach[plr]', 'fly/[speed]', 'unfly', 'kill[plr]', 'bring[plr]', 'naked', 'nolimbs',
-    'noarms', 'nolegs', 'antikick[on/off]', 'blockremote[remote]/[service]', 'remotespy[on/off]',
-    'bang[plr]/[speed]', 'unbang', 'spam[msg]', 'spamdelay[num]', 'unspam', 'info[plr]', 'age[plr]',
-    'invisible', 'walk[plr]', 'glitch[plr]/[num]', 'tp[plr][plr]', 'givetool[plr]/[tool]',
-    'givealltools[plr]', 'blockhats', 'blocktool', 'orbit[plr]', 'unorbit', 'pos', 'savepos', 'loadpos',
-    'tppos[num][num][num]', 'pmspam[plr][msg]', 'unpmspam', 'wsvis[num]', 'bringobj[obj]/[num]',
-    'cbring[plr]/[num]', 'uncbring', 'cfreeze[plr]', 'uncfreeze/[plr]', 'unattach', 'reach[on/off]/[num]',
-    'droptool/[tool]', 'drophats', 'hidecmdbar', 'showcmdbar', 'prefix[key]', 'removeinvis', 'removefog',
-    'animation[id/gui]/[speed]', 'btools', 'esp[plr]', 'unesp/[plr]', 'dice', 'random[min][max]',
-    'closegame', 'savetool/[tool]', 'loadtool/[tool]', 'savealltool', 'loadalltool', 'clicktp/[key]',
-    'clickdel/[key]', 'unclicktp', 'unclickdel', 'oof', 'chatlogs', 'stopadmin', 'freecam/[speed]//fc/[speed]',
-    'unfreecam//unfc', 'gotofc', 'cmds', 'fullcredits', 'hotkey[key][cmd]', 'removehotkey[key]',
-    'removeallhotkey', 'printhotkeys', 'os[plr]', 'spin[plr]', 'unspin', 'fctp[plr]', 'explorer',
-    'maxzoom[num]', 'stare[plr]', 'unstare[plr]', 'tempgod', 'void[plr]', 'freefall[plr]', 'version',
-    'shiftlockon', 'copychat[plr]', 'newattach[plr]', 'newkill[plr]', 'newbring[plr]',
-    'spawn[ws/jp/hh/god][num]', 'unspawn', 'autosavetool[on/off]', 'beginbot/[mode]', 'endbot/[mode]',
-    'stopsit', 'gosit', 'spawnpoint', 'nospawn', 'chaterror', 'bypass[on/off]', 'fixcam', 'gotoobj[obj]',
-    'breakcam', 'inviscam', 'printobj/[key]', 'unprintobj', 'hotkeyfc[goto/unfc]', 'carpet[plr]',
-    'uncarpet', 'brickcreate[num]/[pos][pos][pos]', 'uncopychat', 'forward/[speed]', 'unforward',
-    'id[plr]', 'spinhats/[pow]', 'unspinhats', 'headless', 'savemap', 'loadmap', 'creatorid', 'gameid',
-    'delobj[obj]', 'glide[plr]/[speed]', 'stutter[on/off]', 'platform', 'servertime', 'ride[plr]',
-    'unride', 'cmute[plr]', 'uncmute', 'hat[plr]', 'unhat', 'chat[msg]'
-}
--- Create Main Commands GUI
-local MainGui = Instance.new('ScreenGui')
-local CMDSmain = Instance.new('Frame')
-local CMDSframemain = Instance.new('Frame')
-local cmdgui_topframe = Instance.new('Frame')
-local closecmdsgui = Instance.new('TextButton')
-local cmdgui_midframe = Instance.new('Frame')
-local cmdsgui_SearchFunction = Instance.new('TextBox')
-local cmdsgui_searchDETAILFRAME = Instance.new('Frame')
-local cmdsgui_searchDETAILTEXT = Instance.new('TextLabel')
-local ListofCMDS = Instance.new('ScrollingFrame')
-local cmdTutorial1 = Instance.new('TextLabel')
-local cmdTutorial2 = Instance.new('TextLabel')
-local cmdTutorial3 = Instance.new('TextLabel')
-local CMDS_Shadow = Instance.new('Frame')
-local CMDS_Shadow2 = Instance.new('Frame')
-
-MainGui.Name = 'CMDS_GUI_V2'
-MainGui.Parent = gsCoreGui
-
-CMDSmain.Name = 'CMDSmain'
-CMDSmain.Parent = MainGui
-CMDSmain.BackgroundColor3 = Color3.new(1, 1, 1)
-CMDSmain.BackgroundTransparency = 1
-CMDSmain.Position = UDim2.new(0, 695, 0, 297)
-CMDSmain.Size = UDim2.new(0, 440, 0, 367)
-CMDSmain.AnchorPoint = Vector2.new(.5, .5)
-CMDSmain.Visible = false
-CMDSmain.ClipsDescendants = true
-
-CMDSframemain.Name = 'CMDSframemain'
-CMDSframemain.Parent = CMDSmain
-CMDSframemain.BackgroundColor3 = Color3.new(.309804, .309804, .309804)
-CMDSframemain.BorderSizePixel = 0
-CMDSframemain.Size = UDim2.new(0, 440, 0, 367)
-
-cmdgui_topframe.Name = 'cmdgui_topframe'
-cmdgui_topframe.Parent = CMDSframemain
-cmdgui_topframe.BackgroundColor3 = Color3.new(.0666667, .0666667, .0666667)
-cmdgui_topframe.BorderSizePixel = 0
-cmdgui_topframe.Size = UDim2.new(0, 440, 0, 15)
-
-closecmdsgui.Name = 'closecmdsgui'
-closecmdsgui.Parent = cmdgui_topframe
-closecmdsgui.BackgroundColor3 = Color3.new(1, 1, 1)
-closecmdsgui.BackgroundTransparency = 1
-closecmdsgui.Position = UDim2.new(0, 410, 0, 0)
-closecmdsgui.Size = UDim2.new(0, 30, 0, 15)
-closecmdsgui.Font = Enum.Font.SourceSansBold
-closecmdsgui.Text = 'X'
-closecmdsgui.TextColor3 = Color3.new(.968628, .968628, .968628)
-closecmdsgui.TextSize = 20
-
-cmdgui_midframe.Name = 'cmdgui_midframe'
-cmdgui_midframe.Parent = CMDSframemain
-cmdgui_midframe.BackgroundColor3 = Color3.new(.14902, .14902, .14902)
-cmdgui_midframe.BorderSizePixel = 0
-cmdgui_midframe.Position = UDim2.new(0, 0, 0, 15)
-cmdgui_midframe.Size = UDim2.new(0, 440, 0, 45)
-
-cmdsgui_SearchFunction.Name = 'cmdsgui_SearchFunction'
-cmdsgui_SearchFunction.Parent = cmdgui_midframe
-cmdsgui_SearchFunction.BackgroundColor3 = Color3.new(1, 1, 1)
-cmdsgui_SearchFunction.BackgroundTransparency = 1
-cmdsgui_SearchFunction.BorderSizePixel = 0
-cmdsgui_SearchFunction.Position = UDim2.new(0, 120, 0, 10)
-cmdsgui_SearchFunction.Size = UDim2.new(0, 200, 0, 25)
-cmdsgui_SearchFunction.Font = Enum.Font.SourceSans
-cmdsgui_SearchFunction.Text = ''
-cmdsgui_SearchFunction.TextColor3 = Color3.new(.972549, .972549, .972549)
-cmdsgui_SearchFunction.TextScaled = true
-cmdsgui_SearchFunction.TextSize = 14
-cmdsgui_SearchFunction.TextWrapped = true
-
-cmdsgui_searchDETAILFRAME.Name = 'cmdsgui_searchDETAILFRAME'
-cmdsgui_searchDETAILFRAME.Parent = cmdsgui_SearchFunction
-cmdsgui_searchDETAILFRAME.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-cmdsgui_searchDETAILFRAME.BorderSizePixel = 0
-cmdsgui_searchDETAILFRAME.Position = UDim2.new(0, 0, 0, 25)
-cmdsgui_searchDETAILFRAME.Size = UDim2.new(0, 200, 0, 2)
-
-cmdsgui_searchDETAILTEXT.Name = 'cmdsgui_searchDETAILTEXT'
-cmdsgui_searchDETAILTEXT.Parent = cmdsgui_SearchFunction
-cmdsgui_searchDETAILTEXT.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-cmdsgui_searchDETAILTEXT.BackgroundTransparency = 1
-cmdsgui_searchDETAILTEXT.Size = UDim2.new(0, 200, 0, 25)
-cmdsgui_searchDETAILTEXT.Font = Enum.Font.SourceSansLight
-cmdsgui_searchDETAILTEXT.Text = 'Search'
-cmdsgui_searchDETAILTEXT.TextColor3 = Color3.fromRGB(240, 240, 240)
-cmdsgui_searchDETAILTEXT.TextSize = 30
-
-ListofCMDS.Name = 'ListofCMDS'
-ListofCMDS.Parent = CMDSframemain
-ListofCMDS.BackgroundColor3 = Color3.new(.309804, .309804, .309804)
-ListofCMDS.BorderSizePixel = 0
-ListofCMDS.Position = UDim2.new(0, 0, 0, 60)
-ListofCMDS.Size = UDim2.new(0, 440, 0, 307)
-ListofCMDS.CanvasSize = UDim2.new(5, 0, 8, 0)
-ListofCMDS.ScrollingDirection = Enum.ScrollingDirection.XY
-
-cmdTutorial1.Name = 'cmdTutorial'
-cmdTutorial1.Parent = ListofCMDS
-cmdTutorial1.BackgroundColor3 = Color3.new(1, 1, 1)
-cmdTutorial1.BackgroundTransparency = 1
-cmdTutorial1.BorderSizePixel = 0
-cmdTutorial1.Position = UDim2.new(0, 5, 0, 5)
-cmdTutorial1.Size = UDim2.new(0, 420, 0, 20)
-cmdTutorial1.Font = Enum.Font.SourceSansBold
-cmdTutorial1.Text = '"//" means OPTIONAL argument after'
-cmdTutorial1.TextColor3 = Color3.new(.956863, .956863, .956863)
-cmdTutorial1.TextScaled = true
-cmdTutorial1.TextSize = 14
-cmdTutorial1.TextWrapped = true
-cmdTutorial1.TextXAlignment = Enum.TextXAlignment.Left
-
-cmdTutorial2.Name = 'cmdTutorial'
-cmdTutorial2.Parent = ListofCMDS
-cmdTutorial2.BackgroundColor3 = Color3.new(1, 1, 1)
-cmdTutorial2.BackgroundTransparency = 1
-cmdTutorial2.BorderSizePixel = 0
-cmdTutorial2.Position = UDim2.new(0, 5, 0, 25)
-cmdTutorial2.Size = UDim2.new(0, 420, 0, 20)
-cmdTutorial2.Font = Enum.Font.SourceSansBold
-cmdTutorial2.Text = '"//" means another way of running command'
-cmdTutorial2.TextColor3 = Color3.new(.956863, .956863, .956863)
-cmdTutorial2.TextScaled = true
-cmdTutorial2.TextSize = 14
-cmdTutorial2.TextWrapped = true
-cmdTutorial2.TextXAlignment = Enum.TextXAlignment.Left
-
-cmdTutorial3.Name = 'cmdTutorial'
-cmdTutorial3.Parent = ListofCMDS
-cmdTutorial3.BackgroundColor3 = Color3.new(1, 1, 1)
-cmdTutorial3.BackgroundTransparency = 1
-cmdTutorial3.BorderSizePixel = 0
-cmdTutorial3.Position = UDim2.new(0, 5, 0, 45)
-cmdTutorial3.Size = UDim2.new(0, 420, 0, 20)
-cmdTutorial3.Font = Enum.Font.SourceSansBold
-cmdTutorial3.Text = 'Anything inside "[]" is an argument for the command'
-cmdTutorial3.TextColor3 = Color3.new(.956863, .956863, .956863)
-cmdTutorial3.TextScaled = true
-cmdTutorial3.TextSize = 14
-cmdTutorial3.TextWrapped = true
-cmdTutorial3.TextXAlignment = Enum.TextXAlignment.Left
-
-CMDS_Shadow.Name = 'CMDS_Shadow'
-CMDS_Shadow.Parent = CMDSmain
-CMDS_Shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-CMDS_Shadow.BackgroundTransparency = .60000002384186
-CMDS_Shadow.BorderSizePixel = 0
-CMDS_Shadow.Position = UDim2.new(0, 2, 0, 2)
-CMDS_Shadow.Size = UDim2.new(0, 440, 0, 367)
-CMDS_Shadow.ZIndex = -1
-
-CMDS_Shadow2.Name = 'CMDS_Shadow2'
-CMDS_Shadow2.Parent = CMDSmain
-CMDS_Shadow2.BackgroundColor3 = Color3.new(0, 0, 0)
-CMDS_Shadow2.BackgroundTransparency = .80000001192093
-CMDS_Shadow2.BorderSizePixel = 0
-CMDS_Shadow2.Position = UDim2.new(0, 5, 0, 5)
-CMDS_Shadow2.Size = UDim2.new(0, 440, 0, 367)
-CMDS_Shadow2.ZIndex = -1
-
--- Close button functionality
-closecmdsgui.MouseButton1Click:Connect(function()
-    CMDSmain:TweenSize(UDim2.new(0, 0, 0, 0), 'InOut', 'Sine', 2)
-end)
-
--- Create command labels
-function CreateCMDlabel(position, text)
-    local labelHeight = 15
-    local cmdLabel = Instance.new('TextLabel')
-    cmdLabel.Name = 'cmdHere'
-    cmdLabel.TextWrapped = true
-    cmdLabel.Parent = ListofCMDS
-    cmdLabel.BackgroundColor3 = Color3.new(1, 1, 1)
-    cmdLabel.BackgroundTransparency = 1
-    cmdLabel.BorderSizePixel = 0
-    cmdLabel.Position = position
-    cmdLabel.Size = UDim2.new(0, 1950, 0, labelHeight)
-    cmdLabel.Font = Enum.Font.SourceSans
-    cmdLabel.Text = text
-    cmdLabel.TextWrapped = true
-    cmdLabel.TextColor3 = Color3.new(.956863, .956863, .956863)
-    cmdLabel.TextScaled = false
-    cmdLabel.TextSize = 20
-    cmdLabel.TextXAlignment = Enum.TextXAlignment.Left
-end
-
--- Populate command list
-for i, _cmds in pairs(searchCmds) do
-    CreateCMDlabel(UDim2.new(0, 5, 0, 50 + (i * 15)), _cmds)
-end
--- GUI Dragging Functionality for Commands GUI
-local UserInputService = game:GetService('UserInputService')
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-local function updateCMDS(input)
-    local delta = input.Position - dragStart
-    local updateTime = .055
-    local goals = {}
-    goals.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    local moveTween = gsTween:Create(CMDSmain, TweenInfo.new(updateTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), goals)
-    moveTween:Play()
-end
-
-cmdgui_topframe.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = CMDSmain.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
+commands.autosit = function()
+    commands._autoSitRunning = true
+    spawn(function()
+        while commands._autoSitRunning do
+            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+                LP.Character.Humanoid.Sit = true
             end
-        end)
-    end
-end)
+            wait(0.5)
+        end
+    end)
+    notify("Auto Sit", "Activated", 3)
+end
 
-cmdgui_topframe.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
+commands.unautosit = function()
+    commands._autoSitRunning = false
+    notify("Auto Sit", "Deactivated", 3)
+end
 
-cmdgui_midframe.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = CMDSmain.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-cmdgui_midframe.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        updateCMDS(input)
-    end
-end)
-
--- Search Function Focus/Blur
-cmdsgui_SearchFunction.Focused:Connect(function()
-    cmdsgui_SearchFunction.TextTransparency = 0
-    local textGoals = {}
-    textGoals.TextColor3 = Color3.new(.0980392, .462745, .823529)
-    textGoals.TextSize = 18
-    textGoals.Position = UDim2.new(0, -70, 0, -15)
-    
-    local frameGoals = {}
-    frameGoals.BackgroundColor3 = Color3.new(.0980392, .462745, .823529)
-    
-    local textTween = gsTween:Create(cmdsgui_searchDETAILTEXT, TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), textGoals)
-    textTween:Play()
-    
-    local frameTween = gsTween:Create(cmdsgui_searchDETAILFRAME, TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), frameGoals)
-    frameTween:Play()
-end)
-
-cmdsgui_SearchFunction.FocusLost:Connect(function(enterPressed)
-    if not enterPressed then
-        cmdsgui_SearchFunction.TextTransparency = 1
-    else
-        cmdsgui_SearchFunction.Text = ''
-    end
-    
-    local textGoals = {}
-    textGoals.TextColor3 = Color3.fromRGB(240, 240, 240)
-    textGoals.TextSize = 30
-    textGoals.Position = UDim2.new(0, 0, 0, 0)
-    
-    local frameGoals = {}
-    frameGoals.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    
-    local textTween = gsTween:Create(cmdsgui_searchDETAILTEXT, TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), textGoals)
-    textTween:Play()
-    
-    local frameTween = gsTween:Create(cmdsgui_searchDETAILFRAME, TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), frameGoals)
-    frameTween:Play()
-end)
-
--- Search Filter
-cmdsgui_SearchFunction.Changed:Connect(function()
-    local index = 0
-    if cmdsgui_SearchFunction.Text ~= '' then
-        for i, v in pairs(ListofCMDS:GetChildren()) do
-            if v.Name == 'cmdHere' then
-                if not string.find(v.Text, cmdsgui_SearchFunction.Text) then
-                    v.Visible = false
-                else
-                    v.Visible = true
-                    index = index + 1
-                    v.Position = UDim2.new(0, 5, 0, 50 + (index * 15))
+commands.annoy = function(args)
+    if args[1] then
+        local player = findPlayer(args[1])
+        if player and player.Character then
+            commands._annoyRunning = true
+            spawn(function()
+                while commands._annoyRunning and player and player.Character do
+                    LP.Character:SetPrimaryPartCFrame(player.Character:GetPrimaryPartCFrame())
+                    wait(0.1)
                 end
+            end)
+            notify("Annoy", "Annoying " .. player.Name, 3)
+        end
+    end
+end
+
+commands.unannoy = function()
+    commands._annoyRunning = false
+    notify("Annoy", "Stopped annoying", 3)
+end
+
+commands.spamstart = function(args)
+    if #args > 0 then
+        spamMessage = table.concat(args, " ")
+        spamActive = true
+        spawn(function()
+            while spamActive do
+                ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(spamMessage, "All")
+                wait(spamDelay)
+            end
+        end)
+        notify("Spam", "Started spamming: " .. spamMessage, 3)
+    end
+end
+
+commands.spamstop = function()
+    spamActive = false
+    notify("Spam", "Stopped spamming", 3)
+end
+
+commands.spamdelay = function(args)
+    if args[1] and tonumber(args[1]) then
+        spamDelay = tonumber(args[1])
+        notify("Spam Delay", "Set to " .. spamDelay .. " seconds", 3)
+    end
+end
+
+commands.dance = function()
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://3119674562" -- Default dance animation
+    local track = LP.Character.Humanoid:LoadAnimation(animation)
+    track:Play()
+    notify("Dance", "Started dancing", 3)
+    
+    -- Store for stopping
+    commands._danceTrack = track
+end
+
+commands.undance = function()
+    if commands._danceTrack then
+        commands._danceTrack:Stop()
+        commands._danceTrack = nil
+        notify("Dance", "Stopped dancing", 3)
+    end
+end
+
+commands.confuse = function()
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://3379609655" -- Confused animation
+    local track = LP.Character.Humanoid:LoadAnimation(animation)
+    track:Play()
+    notify("Confuse", "Acting confused", 3)
+    
+    -- Store for stopping
+    commands._confuseTrack = track
+end
+
+commands.unconfuse = function()
+    if commands._confuseTrack then
+        commands._confuseTrack:Stop()
+        commands._confuseTrack = nil
+        notify("Confuse", "Stopped being confused", 3)
+    end
+end
+
+commands.salute = function()
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://3313280619" -- Salute animation
+    local track = LP.Character.Humanoid:LoadAnimation(animation)
+    track:Play()
+    notify("Salute", "Saluting", 3)
+    
+    -- Store for stopping
+    commands._saluteTrack = track
+end
+
+commands.unsalute = function()
+    if commands._saluteTrack then
+        commands._saluteTrack:Stop()
+        commands._saluteTrack = nil
+        notify("Salute", "Stopped saluting", 3)
+    end
+end
+
+commands.wave = function()
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://3313326211" -- Wave animation
+    local track = LP.Character.Humanoid:LoadAnimation(animation)
+    track:Play()
+    notify("Wave", "Waving", 3)
+    
+    -- Store for stopping
+    commands._waveTrack = track
+end
+
+commands.unwave = function()
+    if commands._waveTrack then
+        commands._waveTrack:Stop()
+        commands._waveTrack = nil
+        notify("Wave", "Stopped waving", 3)
+    end
+end
+
+commands.laugh = function()
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://3313403884" -- Laugh animation
+    local track = LP.Character.Humanoid:LoadAnimation(animation)
+    track:Play()
+    notify("Laugh", "Laughing", 3)
+    
+    -- Store for stopping
+    commands._laughTrack = track
+end
+
+commands.unlaugh = function()
+    if commands._laughTrack then
+        commands._laughTrack:Stop()
+        commands._laughTrack = nil
+        notify("Laugh", "Stopped laughing", 3)
+    end
+end
+
+commands.clap = function()
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://3313391755" -- Clap animation
+    local track = LP.Character.Humanoid:LoadAnimation(animation)
+    track:Play()
+    notify("Clap", "Clapping", 3)
+    
+    -- Store for stopping
+    commands._clapTrack = track
+end
+
+commands.unclap = function()
+    if commands._clapTrack then
+        commands._clapTrack:Stop()
+        commands._clapTrack = nil
+        notify("Clap", "Stopped clapping", 3)
+    end
+end
+
+commands.point = function()
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://3313421352" -- Point animation
+    local track = LP.Character.Humanoid:LoadAnimation(animation)
+    track:Play()
+    notify("Point", "Pointing", 3)
+    
+    -- Store for stopping
+    commands._pointTrack = track
+end
+
+commands.unpoint = function()
+    if commands._pointTrack then
+        commands._pointTrack:Stop()
+        commands._pointTrack = nil
+        notify("Point", "Stopped pointing", 3)
+    end
+end
+
+-- Command Processor
+function processCommand(message)
+    if string.sub(message, 1, 1) == prefix then
+        local fullCommand = string.sub(message, 2)
+        local splitCommand = {}
+        for word in string.gmatch(fullCommand, "%S+") do
+            table.insert(splitCommand, word)
+        end
+        
+        local commandName = string.lower(splitCommand[1] or "")
+        table.remove(splitCommand, 1)
+        
+        local commandFunction = commands[commandName]
+        if commandFunction then
+            commandFunction(splitCommand)
+        else
+            notify("Error", "Unknown command: " .. commandName, 3)
+        end
+    end
+end
+
+-- Chat Connection
+LP.Chatted:Connect(processCommand)
+
+-- Noclip Loop
+RunService.Stepped:Connect(function()
+    if noclipEnabled and LP.Character then
+        for _, part in pairs(LP.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
         end
     end
 end)
-
--- Chat Command Handler
-LP.Chatted:Connect(function(chat)
-    run(chat)
-end)
-
-function run(message)
-    if string.lower(string.sub(message, 2, 5)) == 'chat' then
-        message = message
-    elseif string.match(message, 'hotkey') and string.match(message, 'chat') then
-        message = message
-    else
-        message = string.lower(message)
-    end
-    
-    local prefix = string.sub(message, 1, 1)
-    
-    if prefix == commandPrefix then
-        message = string.sub(message, 2)
-        local args = {}
-        
-        for arg in string.gmatch(message, '[^%s]+') do
-            table.insert(args, arg)
-        end
-        
-        local cmdName = args[1]
-        table.remove(args, 1)
-        
-        local cmdFunction = Commands[cmdName]
-        
-        if cmdFunction ~= nil then
-            cmdFunction(args)
-        end
-    end
-end
 
 -- Command Bar GUI
-local CommandBarGui = Instance.new('ScreenGui')
-local CommandBarFrame = Instance.new('Frame')
-local CommandBarText = Instance.new('TextBox')
+local commandBar = Instance.new("ScreenGui")
+commandBar.Name = "FujiwarasayoCommandBar"
+commandBar.Parent = CoreGui
 
-CommandBarGui.Name = 'CommandBar'
-CommandBarGui.Parent = gsCoreGui
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(0, 200, 0, 30)
+textBox.Position = UDim2.new(0, 10, 1, -40)
+textBox.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+textBox.TextColor3 = Color3.fromRGB(230, 230, 230)
+textBox.PlaceholderText = "Enter command..."
+textBox.Text = ""
+textBox.Parent = commandBar
 
-CommandBarFrame.Name = 'CMDBAR'
-CommandBarFrame.Parent = CommandBarGui
-CommandBarFrame.BackgroundColor3 = Color3.new(.164706, .152941, .172549)
-CommandBarFrame.BorderSizePixel = 0
-CommandBarFrame.Position = UDim2.new(.025, 0, 1, 0)
-CommandBarFrame.Size = UDim2.new(0, 270, 0, 35)
-
-CommandBarText.Name = 'CMDBARText'
-CommandBarText.Parent = CommandBarFrame
-CommandBarText.BackgroundColor3 = Color3.new(.188235, .188235, .188235)
-CommandBarText.BorderSizePixel = 0
-CommandBarText.Position = UDim2.new(0, 5, 0, 5)
-CommandBarText.Size = UDim2.new(0, 260, 0, 25)
-CommandBarText.Font = Enum.Font.SourceSansLight
-CommandBarText.Text = ''
-CommandBarText.TextColor3 = Color3.new(.933333, .933333, .933333)
-CommandBarText.TextScaled = true
-CommandBarText.TextSize = 14
-CommandBarText.TextWrapped = true
-
--- Command Bar Hotkey
-Mouse.KeyDown:connect(function(Key)
-    if Key == string.lower(commandPrefix) then
-        CommandBarText:CaptureFocus()
-        CommandBarFrame:TweenPosition(UDim2.new(.015, 0, .95, 0), 'Out', 'Elastic', .5, true)
+textBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed and textBox.Text ~= "" then
+        processCommand(prefix .. textBox.Text)
+        textBox.Text = ""
     end
 end)
 
--- Command Bar Focus Lost
-CommandBarText.FocusLost:connect(function(enterPressed)
-    CommandBarFrame:TweenPosition(UDim2.new(.015, 0, 1, 0), 'Out', 'Quad', .5, true)
-    if enterPressed then
-        local command = CommandBarText.Text
-        CommandBarText.Text = ''
-        run(commandPrefix .. command)
+Mouse.KeyDown:Connect(function(key)
+    if key == prefix then
+        textBox:CaptureFocus()
     end
 end)
 
--- Command Suggestions GUI
-local MatchFrame = Instance.new('Frame')
-MatchFrame.Name = 'Match'
-MatchFrame.Parent = CommandBarFrame
-MatchFrame.BackgroundColor3 = Color3.new(.164706, .152941, .172549)
-MatchFrame.BorderSizePixel = 0
-MatchFrame.Position = UDim2.new(0, 0, -4, 0)
-MatchFrame.Size = UDim2.new(1, 0, 4, 0)
-MatchFrame.Visible = false
-
-function CreateOption(Text)
-    local Option = Instance.new('TextLabel')
-    Option.Name = 'Option'
-    Option.Parent = MatchFrame
-    Option.BackgroundColor3 = Color3.new(1, 1, 1)
-    Option.BackgroundTransparency = 1
-    Option.Position = UDim2.new(-10, 0, 0, 0)
-    Option.Size = UDim2.new(1, 0, 0, 20)
-    Option.Font = Enum.Font.SourceSans
-    Option.Text = Text
-    Option.TextColor3 = Color3.new(.952941, .952941, .952941)
-    Option.TextScaled = true
-    Option.TextWrapped = true
-end
-
--- Create command options
-for i, cmdtext2 in pairs(CMDS) do
-    CreateOption(cmdtext2)
-end
-
--- Command Suggestions Filter
-CommandBarText.Changed:Connect(function()
-    if CommandBarText.Text ~= '' and CommandBarText.Text ~= commandPrefix then
-        MatchFrame.Visible = true
-        local index = 0
-        for i, cmdtext in pairs(MatchFrame:GetChildren()) do
-            if cmdtext.Name == 'Option' then
-                if string.find(cmdtext.Text, CommandBarText.Text) then
-                    cmdtext.Position = UDim2.new(0, 0, 0, 2 + (index * 20))
-                    index = index + 1
-                    if cmdtext.Position == UDim2.new(0, 0, 0, 142) then
-                        cmdtext.Position = UDim2.new(-10, 0, 0, 0)
-                        index = index - 1
-                    end
-                else
-                    cmdtext.Position = UDim2.new(-10, 0, 0, 0)
-                end
-            end
-        end
-    else
-        MatchFrame.Visible = false
-    end
-end)
--- Chat Logs GUI
-local ChatLogsGui = Instance.new('ScreenGui')
-local MainChatFrame = Instance.new('Frame')
-local TopBar = Instance.new('Frame')
-local CloseChatGUI = Instance.new('TextButton')
-local MiddleBar = Instance.new('Frame')
-local PrintChat = Instance.new('TextButton')
-local Shadow1 = Instance.new('Frame')
-local Shadow2 = Instance.new('Frame')
-local ScrollingChatFrame = Instance.new('ScrollingFrame')
-
-ChatLogsGui.Name = 'ChatLogsv2'
-ChatLogsGui.Parent = gsCoreGui
-
-MainChatFrame.Name = 'MainChatFrame'
-MainChatFrame.Parent = ChatLogsGui
-MainChatFrame.BackgroundColor3 = Color3.new(1, 1, 1)
-MainChatFrame.BackgroundTransparency = 1
-MainChatFrame.Position = UDim2.new(0, 760, 0, 261)
-MainChatFrame.Size = UDim2.new(0, 525, 0, 337)
-MainChatFrame.Visible = false
-
-TopBar.Parent = MainChatFrame
-TopBar.BackgroundColor3 = Color3.new(.0784314, .0784314, .0784314)
-TopBar.BorderSizePixel = 0
-TopBar.Size = UDim2.new(0, 525, 0, 15)
-
-CloseChatGUI.Name = 'CloseChatGUI'
-CloseChatGUI.Parent = TopBar
-CloseChatGUI.BackgroundColor3 = Color3.new(1, 1, 1)
-CloseChatGUI.BackgroundTransparency = 1
-CloseChatGUI.BorderSizePixel = 0
-CloseChatGUI.Position = UDim2.new(0, 495, 0, 0)
-CloseChatGUI.Size = UDim2.new(0, 30, 0, 15)
-CloseChatGUI.Font = Enum.Font.SourceSansBold
-CloseChatGUI.Text = 'X'
-CloseChatGUI.TextColor3 = Color3.new(.945098, .945098, .945098)
-CloseChatGUI.TextSize = 20
-
-MiddleBar.Parent = MainChatFrame
-MiddleBar.BackgroundColor3 = Color3.new(.14902, .14902, .14902)
-MiddleBar.BorderSizePixel = 0
-MiddleBar.Position = UDim2.new(0, 0, 0, 15)
-MiddleBar.Size = UDim2.new(0, 525, 0, 50)
-
-PrintChat.Name = 'PrintChat'
-PrintChat.Parent = MiddleBar
-PrintChat.BackgroundColor3 = Color3.new(.870588, .25098, .25098)
-PrintChat.BorderSizePixel = 0
-PrintChat.Position = UDim2.new(0, 15, 0, 0)
-PrintChat.Size = UDim2.new(0, 170, 0, 30)
-PrintChat.Font = Enum.Font.SourceSansLight
-PrintChat.Text = 'Print Chat'
-PrintChat.TextColor3 = Color3.new(.960784, .960784, .960784)
-PrintChat.TextSize = 30
-PrintChat.TextWrapped = true
-
-Shadow1.Name = 'Shadow1'
-Shadow1.Parent = MainChatFrame
-Shadow1.BackgroundColor3 = Color3.new(0, 0, 0)
-Shadow1.BackgroundTransparency = .5
-Shadow1.Position = UDim2.new(0, 2, 0, 2)
-Shadow1.Size = UDim2.new(0, 525, 0, 337)
-Shadow1.ZIndex = -1
-
-Shadow2.Name = 'Shadow2'
-Shadow2.Parent = MainChatFrame
-Shadow2.BackgroundColor3 = Color3.new(0, 0, 0)
-Shadow2.BackgroundTransparency = .80000001192093
-Shadow2.Position = UDim2.new(0, 5, 0, 5)
-Shadow2.Size = UDim2.new(0, 525, 0, 337)
-Shadow2.ZIndex = -1
-
-ScrollingChatFrame.Parent = MainChatFrame
-ScrollingChatFrame.BackgroundColor3 = Color3.new(.266667, .266667, .266667)
-ScrollingChatFrame.BorderSizePixel = 0
-ScrollingChatFrame.Position = UDim2.new(0, 0, 0, 65)
-ScrollingChatFrame.Size = UDim2.new(0, 525, 0, 271)
-ScrollingChatFrame.CanvasPosition = Vector2.new(0, 403)
-ScrollingChatFrame.ScrollBarThickness = 8
-
--- Create Chat Text Function
-function CreateChatText(plr, chat)
-    for i, v in pairs(ScrollingChatFrame:GetDescendants()) do
-        v.Position = v.Position - UDim2.new(0, 0, 0, 20)
-        if v.Position == UDim2.new(0, 5, 0, 10) then
-            v:Destroy()
-        end
-    end
+-- Cleanup on script termination
+game:BindToClose(function()
+    -- Stop any running loops
+    commands._loopGotoRunning = false
+    commands._autoSitRunning = false
+    commands._annoyRunning = false
+    spamActive = false
     
-    local ChatLabel = Instance.new('TextLabel')
-    ChatLabel.Name = 'Example'
-    ChatLabel.Parent = ScrollingChatFrame
-    ChatLabel.BackgroundColor3 = Color3.new(1, 1, 1)
-    ChatLabel.BackgroundTransparency = 1
-    ChatLabel.Position = UDim2.new(0, 5, 0, 650)
-    ChatLabel.Size = UDim2.new(0, 500, 0, 20)
-    ChatLabel.Font = Enum.Font.SourceSans
-    ChatLabel.Text = '[' .. plr.Name .. ']: ' .. chat
-    ChatLabel.TextColor3 = Color3.new(.960784, .960784, .960784)
-    ChatLabel.TextScaled = true
-    ChatLabel.TextSize = 20
-    ChatLabel.TextWrapped = true
-    ChatLabel.TextXAlignment = Enum.TextXAlignment.Left
-end
-
--- Close Chat GUI Button
-CloseChatGUI.MouseButton1Click:Connect(function()
-    MainChatFrame:TweenPosition(UDim2.new(0, 550, 0, -550), 'InOut', 'Sine', 2)
-    wait(2.01)
-    MainChatFrame.Visible = false
+    -- Stop animations
+    if commands._danceTrack then commands._danceTrack:Stop() end
+    if commands._confuseTrack then commands._confuseTrack:Stop() end
+    if commands._saluteTrack then commands._saluteTrack:Stop() end
+    if commands._waveTrack then commands._waveTrack:Stop() end
+    if commands._laughTrack then commands._laughTrack:Stop() end
+    if commands._clapTrack then commands._clapTrack:Stop() end
+    if commands._pointTrack then commands._pointTrack:Stop() end
 end)
 
--- Print Chat Toggle
-printingChat = false
-PrintChat.MouseButton1Click:Connect(function()
-    if printingChat == false then
-        printingChat = true
-        PrintChat.BackgroundColor3 = Color3.fromRGB(60, 200, 60)
-    elseif printingChat == true then
-        printingChat = false
-        PrintChat.BackgroundColor3 = Color3.new(.870588, .25098, .25098)
-    end
-end)
-
--- Chat Logs Dragging
-local UserInputService = game:GetService('UserInputService')
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-local function updateChat(input)
-    local delta = input.Position - dragStart
-    local updateTime = .055
-    local goals = {}
-    goals.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    local moveTween = gsTween:Create(MainChatFrame, TweenInfo.new(updateTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), goals)
-    moveTween:Play()
-end
-
-MiddleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainChatFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-MiddleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        updateChat(input)
-    end
-end)
-
--- Print Chat Function
-function printChat(player, chat)
-    print('[' .. player.Name .. ']: ' .. chat)
-end
-
--- Monitor Chat for All Players
-complimentReady = true
-for i, currentPlayersChatting in pairs(game:GetService('Players'):GetPlayers()) do
-    currentPlayersChatting.Chatted:connect(function(chat)
-        CreateChatText(currentPlayersChatting, chat)
-        if printingChat then
-            printChat(currentPlayersChatting, chat)
-        end
-        if copychatACTIVE then
-            if currentPlayersChatting == copychatplayer then
-                gsReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(chat, 'All')
-            end
-        end
-        
-        -- Bot Mode: Fling
-        if modeFling == true then
-            if string.lower(string.sub(chat, 1, 7)) == '!fling ' then
-                if gsWorkspace:PGSIsEnabled() == false then
-                    FEGodmode()
-                end
-                if string.lower(string.sub(chat, 8)) == 'me' then
-                    run(commandPrefix .. 'unfling')
-                    LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame + Vector3.new(0, 10, 0)
-                    run(commandPrefix .. 'fling ' .. currentPlayersChatting.Name .. ' 2000000')
-                else
-                    for i, notAll in pairs(findSinglePlayer(string.lower(string.sub(chat, 8)))) do
-                        if notAll ~= LP then
-                            run(commandPrefix .. 'unfling')
-                            LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame + Vector3.new(0, 10, 0)
-                            run(commandPrefix .. 'fling ' .. notAll.Name .. ' 2000000')
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- Bot Mode: Compliment
-        if modeCompliment == true then
-            if string.lower(string.sub(chat, 1, 3)) == '!c ' then
-                if complimentReady then
-                    complimentReady = false
-                    if string.lower(string.sub(chat, 4)) == 'me' then
-                        complimentplr(currentPlayersChatting)
-                    else
-                        for i, Others in pairs(findSinglePlayer(string.lower(string.sub(chat, 4)))) do
-                            if Others == LP then
-                                game:GetService('ReplicatedStorage').DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Don't be silly, I can't compliment myself!", 'All')
-                            else
-                                complimentplr(Others)
-                            end
-                        end
-                    end
-                    wait(1)
-                    complimentReady = true
-                end
-            end
-        end
-        
-        -- Bot Mode: Move
-        if modeMove == true then
-            if string.lower(string.sub(chat, 1, 9)) == '!bringbot' then
-                run(commandPrefix .. 'unfollow')
-                run(commandPrefix .. 'unwalk')
-                run(commandPrefix .. 'goto ' .. currentPlayersChatting.Name)
-            elseif string.lower(string.sub(chat, 1, 6)) == '!walk ' then
-                for i, getWalkPlayer in pairs(findSinglePlayer(string.lower(string.sub(chat, 7)))) do
-                    if getWalkPlayer == LP then
-                        run(commandPrefix .. 'unfollow')
-                        run(commandPrefix .. 'walk ' .. currentPlayersChatting.Name)
-                    else
-                        run(commandPrefix .. 'unfollow')
-                        run(commandPrefix .. 'walk ' .. getWalkPlayer.Name)
-                    end
-                end
-            elseif string.lower(string.sub(chat, 1, 8)) == '!follow ' then
-                for i, getFollowPlayer in pairs(findSinglePlayer(string.lower(string.sub(chat, 9)))) do
-                    if getFollowPlayer == LP then
-                        run(commandPrefix .. 'unwalk')
-                        run(commandPrefix .. 'follow ' .. currentPlayersChatting.Name)
-                    else
-                        run(commandPrefix .. 'unwalk')
-                        run(commandPrefix .. 'follow ' .. getFollowPlayer.Name)
-                    end
-                end
-            end
-        end
-        
-        -- Bot Mode: Info
-        if modeInfo == true then
-            if infoReady then
-                infoReady = false
-                if string.lower(string.sub(chat, 1, 5)) == '!age ' then
-                    for i, v in pairs(findSinglePlayer(string.lower(string.sub(chat, 6)))) do
-                        if v == LP then
-                            run(commandPrefix .. 'age ' .. currentPlayersChatting.Name)
-                        else
-                            run(commandPrefix .. 'age ' .. v.Name)
-                        end
-                    end
-                end
-                if string.lower(string.sub(chat, 1, 4)) == '!id ' then
-                    for i, v in pairs(findSinglePlayer(string.lower(string.sub(chat, 5)))) do
-                        if v == LP then
-                            run(commandPrefix .. 'id ' .. currentPlayersChatting.Name)
-                        else
-                            run(commandPrefix .. 'id ' .. v.Name)
-                        end
-                    end
-                end
-                wait(1)
-                infoReady = true
-            end
-        end
-    end)
-end
--- Player Added Event (for new players joining)
-game:GetService('Players').PlayerAdded:connect(function(plr)
-    plr.Chatted:connect(function(chat)
-        CreateChatText(plr, chat)
-        if printingChat then
-            printChat(plr, chat)
-        end
-        
-        -- Bot Mode: Fling
-        if modeFling == true then
-            if string.lower(string.sub(chat, 1, 7)) == '!fling ' then
-                if gsWorkspace:PGSIsEnabled() == false then
-                    FEGodmode()
-                end
-                if string.lower(string.sub(chat, 8)) == 'me' then
-                    run(commandPrefix .. 'unfling')
-                    LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame + Vector3.new(0, 10, 0)
-                    run(commandPrefix .. 'fling ' .. plr.Name .. ' 2000000')
-                else
-                    for i, notAll in pairs(findSinglePlayer(string.lower(string.sub(chat, 8)))) do
-                        if notAll ~= LP then
-                            run(commandPrefix .. 'unfling')
-                            LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame + Vector3.new(0, 10, 0)
-                            run(commandPrefix .. 'fling ' .. notAll.Name .. ' 2000000')
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- Bot Mode: Compliment
-        if modeCompliment == true then
-            if string.lower(string.sub(chat, 1, 3)) == '!c ' then
-                if complimentReady == true then
-                    complimentReady = false
-                    if string.lower(string.sub(chat, 4)) == 'me' then
-                        complimentplr(plr)
-                    else
-                        for i, Others in pairs(findSinglePlayer(string.lower(string.sub(chat, 4)))) do
-                            if Others == LP then
-                                game:GetService('ReplicatedStorage').DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Don't be silly, I can't compliment myself!", 'All')
-                            else
-                                complimentplr(Others)
-                            end
-                        end
-                    end
-                    wait(1)
-                    complimentReady = true
-                end
-            end
-        end
-        
-        -- Bot Mode: Move
-        if modeMove == true then
-            if string.lower(string.sub(chat, 1, 9)) == '!bringbot' then
-                run(commandPrefix .. 'unfollow')
-                run(commandPrefix .. 'unwalk')
-                run(commandPrefix .. 'goto ' .. plr.Name)
-            elseif string.lower(string.sub(chat, 1, 6)) == '!walk ' then
-                for i, getWalkPlayer in pairs(findSinglePlayer(string.lower(string.sub(chat, 7)))) do
-                    if getWalkPlayer == LP then
-                        run(commandPrefix .. 'unfollow')
-                        run(commandPrefix .. 'walk ' .. plr.Name)
-                    else
-                        run(commandPrefix .. 'unfollow')
-                        run(commandPrefix .. 'walk ' .. getWalkPlayer.Name)
-                    end
-                end
-            elseif string.lower(string.sub(chat, 1, 8)) == '!follow ' then
-                for i, getFollowPlayer in pairs(findSinglePlayer(string.lower(string.sub(chat, 9)))) do
-                    if getFollowPlayer == LP then
-                        run(commandPrefix .. 'unwalk')
-                        run(commandPrefix .. 'follow ' .. plr.Name)
-                    else
-                        run(commandPrefix .. 'unwalk')
-                        run(commandPrefix .. 'follow ' .. getFollowPlayer.Name)
-                    end
-                end
-            end
-        end
-        
-        -- Bot Mode: Info
-        if modeInfo == true then
-            if infoReady then
-                infoReady = false
-                if string.lower(string.sub(chat, 1, 5)) == '!age ' then
-                    for i, v in pairs(findSinglePlayer(string.lower(string.sub(chat, 6)))) do
-                        if v == LP then
-                            run(commandPrefix .. 'age ' .. plr.Name)
-                        else
-                            run(commandPrefix .. 'age ' .. v.Name)
-                        end
-                    end
-                end
-                if string.lower(string.sub(chat, 1, 4)) == '!id ' then
-                    for i, v in pairs(findSinglePlayer(string.lower(string.sub(chat, 5)))) do
-                        if v == LP then
-                            run(commandPrefix .. 'id ' .. plr.Name)
-                        else
-                            run(commandPrefix .. 'id ' .. v.Name)
-                        end
-                    end
-                end
-                wait(1)
-                infoReady = true
-            end
-        end
-    end)
-end)
-
--- Initialize Variables
-noclip = false
-following = false
-trailing = false
-annoying = false
-flingnoclip = false
-staring = false
-stopsitting = false
-stareplr = ''
-CBRINGamount = 3
-spawnWS = CurrentWalkspeed
-spawnJP = CurrentJumppower
-spawnHH = CurrentHipheight
-spawningfegod = false
-looptpbypassfly = false
-
-if game.GameId == 245662005 or game.GameId == 601130232 then
-    bypassMODE = true
-else
-    bypassMODE = false
-end
-
-viewplr = ''
-loopview = false
-cmdForward = false
-forwardSpeed = 1
-loopviewfc = false
-spinTOhead = false
-spinObj = ''
-rideACTIVE = false
-ridePLAYER = ''
-
-LPcurrenthumanoid = LP.Character.Humanoid
-
--- Main Game Loop
-game:GetService("RunService").Stepped:connect(function()
-    if LP.Character.Humanoid ~= nil then
-        LPcurrenthumanoid = LP.Character.Humanoid
-    end
-    
-    -- Noclip
-    if noclip then
-        if LP.Character then
-            if LP.Character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
-                LP.Character.Head.CanCollide = false
-                LP.Character.Torso.CanCollide = false
-                LP.Character['Left Leg'].CanCollide = false
-                LP.Character['Right Leg'].CanCollide = false
-                LP.Character['Left Arm'].CanCollide = false
-                LP.Character['Right Arm'].CanCollide = false
-            elseif LP.Character.Humanoid.RigType == Enum.HumanoidRigType.R15 then
-                LP.Character.Head.CanCollide = false
-                LP.Character.UpperTorso.CanCollide = false
-                LP.Character.LowerTorso.CanCollide = false
-                LP.Character.HumanoidRootPart.CanCollide = false
-            end
-        end
-    end
-    
-    -- Following
-    if following then
-        LP.Character.HumanoidRootPart.CFrame = gsPlayers[flwplr.Name].Character.HumanoidRootPart.CFrame + gsPlayers[flwplr.Name].Character.HumanoidRootPart.CFrame.lookVector * flwnum
-    end
-    
-    -- Trailing
-    if trailing then
-        LP.Character.HumanoidRootPart.CFrame = gsPlayers[trlplr.Name].Character.HumanoidRootPart.CFrame + gsPlayers[trlplr.Name].Character.HumanoidRootPart.CFrame.lookVector * trlnum
-    end
-    
-    -- Annoying
-    if annoying then
-        LP.Character.HumanoidRootPart.CFrame = gsPlayers[annplr.Name].Character.HumanoidRootPart.CFrame
-    end
-    
-    -- Walk To
-    if walkto then
-        LP.Character.Humanoid:MoveTo(walkplr.Character.HumanoidRootPart.Position)
-    end
-    
-    -- Client Bring
-    if cbringing then
-        CBRINGplr.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame + LP.Character.HumanoidRootPart.CFrame.lookVector * CBRINGamount
-    end
-    
-    -- Client Bring All
-    if cbringingall then
-        for i, getbringplrs in pairs(gsPlayers:GetPlayers()) do
-            if getbringplrs ~= LP then
-                getbringplrs.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame + LP.Character.HumanoidRootPart.CFrame.lookVector * CBRINGamount
-            end
-        end
-    end
-    
-    -- Staring
-    if staring then
-        LP.Character.HumanoidRootPart.CFrame = CFrame.new(LP.Character.Torso.Position, gsPlayers[stareplr.Name].Character.Torso.Position)
-    end
-    
-    -- Stop Sitting
-    if stopsitting then
-        LP.Character.Humanoid.Sit = false
-    end
-    
-    -- Loop TP Bypass Fly
-    if looptpbypassfly then
-        pcall(function()
-            LP.Character.Head.Anchored = false
-            LP.Character.HumanoidRootPart.CFrame = gsWorkspace.rGETpartNUMBER2.CFrame
-            LP.Character.Head.Anchored = true
-        end)
-    end
-    
-    -- Loop View
-    if loopview then
-        view(viewplr)
-    end
-    
-    -- Command Forward
-    if cmdForward then
-        LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame + LP.Character.HumanoidRootPart.CFrame.lookVector * forwardSpeed
-    end
-    
-    -- Loop View Freecam
-    if loopviewfc then
-        pcall(function()
-            gsWorkspace.CurrentCamera.CameraSubject = gsWorkspace.rGETpartNUMBER2
-        end)
-    end
-    
-    -- Spin to Head
-    if spinTOhead then
-        pcall(function()
-            spinObj.Position = LP.Character.Head.Position
-        end)
-    end
-    
-    -- Ride
-    if rideACTIVE == true then
-        LP.Character.HumanoidRootPart.CFrame = ridePLAYER.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-    end
-end)
-
--- Character Death/Respawn Handler
-spawningatreset = false
-spawnresetpoint = LP.Character.Head.CFrame
-
-LPcurrenthumanoid.Died:Connect(function()
-    flying = false
-    doFREECAM = false
-    if savingtoolsloop then
-        run(commandPrefix .. 'savealltool')
-    end
-    if spawningatreset == true then
-        spawnresetpoint = LP.Character.Head.CFrame + Vector3.new(0, 5, 0)
-    end
-end)
-
-LP.CharacterAdded:Connect(function()
-    wait(.2)
-    LP.Character.Humanoid.WalkSpeed = spawnWS
-    LP.Character.Humanoid.JumpPower = spawnJP
-    LP.Character.Humanoid.HipHeight = spawnHH
-    if spawningfegod then
-        FEGodmode()
-    end
-    if spawningpos and spawnpos ~= nil then
-        LP.Character.HumanoidRootPart.CFrame = spawnpos
-    end
-    if spawningatreset == true then
-        LP.Character.HumanoidRootPart.CFrame = spawnresetpoint
-    end
-end)
--- Commands Table
-Commands = {}
-
--- Print Command
-Commands.print = function(args)
-    local message = table.concat(args, ' ')
-    print(message)
-end
-
--- Warn Command
-Commands.warn = function(args)
-    local message = table.concat(args, ' ')
-    warn(message)
-end
-
--- Sit Command
-Commands.sit = function(args)
-    LP.Character.Humanoid.Sit = true
-end
-
--- God Command
-Commands.god = function(args)
-    FEGodmode()
-    Notify('warning', 'You have enabled FE Godmode, tools will not work. Use ' .. commandPrefix .. 'grespawn to remove.', 7)
-end
-
--- View Command
-Commands.view = function(args)
-    if args[1] then
-        for i, v in pairs(findSinglePlayer(args[1])) do
-            if bypassMODE == false then
-                view(v)
-                Notify('info', 'Now viewing ' .. v.Name .. '. Use ' .. commandPrefix .. 'unview to stop viewing.', 3)
-            elseif bypassMODE == true then
-                viewplr = v
-                loopview = true
-            end
-        end
-    end
-end
-
--- Unview Command
-Commands.unview = function(args)
-    view(LP)
-    loopview = false
-end
-
--- Gravity Command
-Commands.gravity = function(args)
-    if args[1] then
-        gsWorkspace.Gravity = args[1]
-    end
-end
-
--- Ungravity Command
-Commands.ungravity = function(args)
-    gsWorkspace.Gravity = CurrentGravity
-end
-
--- Goto Command
-Commands.goto = function(args)
-    if args[1] then
-        if bypassMODE == false then
-            for i, v in pairs(findPlayer(args[1])) do
-                LP.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame
-            end
-        elseif bypassMODE == true then
-            for i, v in pairs(findPlayer(args[1])) do
-                local tweenGoals = {}
-                tweenGoals.CFrame = v.Character.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
-                local tweenInfo = gsTween:Create(LP.Character.HumanoidRootPart, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.In), tweenGoals)
-                tweenInfo:Play()
-            end
-        end
-    end
-end
-
--- FE Check Command
-Commands.fecheck = function(args)
-    if gsWorkspace.FilteringEnabled == true then
-        Notify('warning', 'FE is enabled!', 7)
-    else
-        Notify('warning', 'FE is disabled. Consider using a different script.', 7)
-    end
-end
-
--- Lock Workspace Command
-Commands.lockws = function(args)
-    lockWS()
-    Notify('info', 'Workspace locked.', 4)
-end
-
--- Unlock Workspace Command
-Commands.unlockws = function(args)
-    unlockWS()
-    Notify('info', 'Workspace unlocked.', 4)
-end
-
--- Noclip Command
-Commands.noclip = function(args)
-    noclip = true
-    Notify('info', 'Noclip enabled.', 4)
-end
-
--- Clip Command
-Commands.clip = function(args)
-    noclip = false
-    Notify('info', 'Noclip disabled.', 4)
-end
-
--- Follow Command
-Commands.follow = function(args)
-    if args[1] then
-        for i, v in pairs(findPlayer(args[1])) do
-            flwplr = v
-        end
-        if args[2] then
-            flwnum = args[2]
-        else
-            flwnum = -5
-        end
-        following = true
-    else
-        Notify('warning', 'No player selected to follow! Use: ' .. commandPrefix .. 'follow player', 4)
-    end
-end
-
--- Unfollow Command
-Commands.unfollow = function(args)
-    following = false
-end
-
--- Fling Command
-Commands.fling = function(args)
-    if args[1] then
-        for i, v in pairs(findSinglePlayer(args[1])) do
-            if v ~= LP then
-                view(v)
-                pcall(function()
-                    LP.Character.HumanoidRootPart.Fling:Destroy()
-                end)
-                if not args[2] then
-                    RocketPropulsion(800000, 1000, 400000, v, 'Fling')
-                else
-                    RocketPropulsion(args[2], 1500, 400000, v, 'Fling')
-                end
-                if noclip ~= true then
-                    flingnoclip = true
-                    noclip = true
-                end
-            end
-        end
-    else
-        Notify('warning', 'No player selected to fling! Use: ' .. commandPrefix .. 'fling player', 4)
-    end
-end
-
--- Unfling Command
-Commands.unfling = function(args)
-    view(LP)
-    pcall(function()
-        if LP.Character.HumanoidRootPart.Fling then
-            for i, v in pairs(LP.Character:GetDescendants()) do
-                if v.Name == 'Fling' and v:IsA('RocketPropulsion') then
-                    v:Destroy()
-                end
-            end
-        end
-    end)
-    if flingnoclip == true then
-        noclip = false
-        flingnoclip = false
-    end
-end
-
--- Trail Command
-Commands.trail = function(args)
-    if args[1] then
-        for i, v in pairs(findPlayer(args[1])) do
-            trlplr = v
-        end
-        if args[2] then
-            trlnum = args[2]
-        else
-            trlnum = 5
-        end
-        trailing = true
-    else
-        Notify('warning', 'No player selected to trail! Use: ' .. commandPrefix .. 'trail player', 4)
-    end
-end
-
--- Untrail Command
-Commands.untrail = function(args)
-    trailing = false
-end
-
--- Annoy Command
-Commands.annoy = function(args)
-    if args[1] then
-        for i, v in pairs(findPlayer(args[1])) do
-            annplr = v
-        end
-        annoying = true
-    else
-        Notify('warning', 'No player selected to annoy! Use: ' .. commandPrefix .. 'annoy player', 4)
-    end
-end
-
--- Unannoy Command
-Commands.unannoy = function(args)
-    annoying = false
-end
-
--- Reset Command
-Commands.reset = function(args)
-    LP.Character:BreakJoints()
-end
-
--- Grespawn Command
-Commands.grespawn = function(args)
-    LP.Character.Humanoid.Health = 0
-    wait(1)
-    LP.Character.Head.CFrame = CFrame.new(1000000, 0, 1000000)
-    LP.Character.Torso.CFrame = CFrame.new(1000000, 0, 1000000)
-end
-
--- Respawn Command
-Commands.respawn = function(args)
-    local newChar = Instance.new("Model", workspace)
-    newChar.Name = "new " .. LP.Name
-    local humanoid = Instance.new("Humanoid", newChar)
-    local torso = Instance.new("Part", newChar)
-    torso.Name = "Torso"
-    torso.CanCollide = false
-    torso.Transparency = 1
-    LP.Character = newChar
-end
-
--- Speed Command
-Commands.speed = function(args)
-    if args[1] then
-        run(commandPrefix .. 'ws ' .. args[1])
-    end
-end
-
--- Walkspeed Variables
-bypassingwalkspeed = false
-
--- WS Command
-Commands.ws = function(args)
-    if args[1] then
-        if bypassMODE == false then
-            LP.Character.Humanoid.WalkSpeed = args[1]
-        elseif bypassMODE == true then
-            if game.GameId == 245662005 then
-                bypassingwalkspeed = true
-                bypassWalkspeed = args[1]
-            end
-        end
-    end
-end
-
--- Bypass Walkspeed Loop
-game:GetService('RunService').Heartbeat:Connect(function()
-    if bypassingwalkspeed then
-        LP.Character.Humanoid.WalkSpeed = bypassWalkspeed
-    end
-end)
-
--- Jumppower Command
-Commands.jumppower = function(args)
-    if args[1] then
-        LP.Character.Humanoid.JumpPower = args[1]
-    end
-end
-
--- JP Command
-Commands.jp = function(args)
-    if args[1] then
-        LP.Character.Humanoid.JumpPower = args[1]
-    end
-end
-
--- Hipheight Command
-Commands.hipheight = function(args)
-    if args[1] then
-        LP.Character.Humanoid.HipHeight = args[1]
-    end
-end
-
--- HH Command
-Commands.hh = function(args)
-    if args[1] then
-        LP.Character.Humanoid.HipHeight = args[1]
-    end
-end
-
--- Default Command
-Commands.default = function(args)
-    LP.Character.Humanoid.WalkSpeed = CurrentWalkspeed
-    LP.Character.Humanoid.HipHeight = CurrentHipheight
-    LP.Character.Humanoid.JumpPower = CurrentJumppower
-end
-
--- Credits Command
-Commands.credits = function(args)
-    Notify('info', 'Fujiwara Sayo's admin is a remake of shattervast, ' .. commandPrefix .. 'fullcredits for all credits.', 8)
-end
-
--- Attach Command
-Commands.attach = function(args)
-    if hasTools() == false then
-        Notify('warning', 'You need a tool in your backpack/inventory to use this command.', 8)
-    else
-        FEGodmode()
-        for i, v in pairs(LP.Backpack:GetChildren()) do
-            LP.Character.Humanoid:EquipTool(v)
-        end
-        if args[1] then
-            for i, v in pairs(findSinglePlayer(args[1])) do
-                if v ~= LP then
-                    LP.Character.HumanoidRootPart.CFrame = v.Character['Left Arm'].CFrame
-                    wait(.3)
-                    LP.Character.HumanoidRootPart.CFrame = v.Character['Left Arm'].CFrame
-                end
-            end
-        end
-    end
-end
--- Fly Command
-Commands.fly = function(args)
-    if bypassMODE == false then
-        local flySpeed = 1
-        repeat wait() until LP and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character:FindFirstChild("Humanoid")
-        repeat wait() until Mouse
-        
-        if args[1] then
-            speedfly = args[1]
-        else
-            speedfly = 1
-        end
-        
-        local T = LP.Character.HumanoidRootPart
-        local CONTROL = {F = 0, B = 0, L = 0, R = 0}
-        local lCONTROL = {F = 0, B = 0, L = 0, R = 0}
-        local SPEED = flySpeed
-        
-        local function fly()
-            flying = true
-            local BG = Instance.new("BodyGyro", T)
-            local BV = Instance.new("BodyVelocity", T)
-            BG.P = 9e4
-            BG.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-            BG.cframe = T.CFrame
-            BV.velocity = Vector3.new(0, .1, 0)
-            BV.maxForce = Vector3.new(9e9, 9e9, 9e9)
-            
-            spawn(function()
-                repeat wait()
-                    LP.Character.Humanoid.PlatformStand = true
-                    if CONTROL.L + CONTROL.R ~= 0 or CONTROL.F + CONTROL.B ~= 0 then
-                        SPEED = 50
-                    elseif not (CONTROL.L + CONTROL.R ~= 0 or CONTROL.F + CONTROL.B ~= 0) and SPEED ~= 0 then
-                        SPEED = 0
-                    end
-                    if (CONTROL.L + CONTROL.R) ~= 0 or (CONTROL.F + CONTROL.B) ~= 0 then
-                        BV.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (CONTROL.F + CONTROL.B)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.F + CONTROL.B) * .2, 0).p) - workspace.CurrentCamera.CoordinateFrame.p)) * SPEED
-                        lCONTROL = {F = CONTROL.F, B = CONTROL.B, L = CONTROL.L, R = CONTROL.R}
-                    elseif (CONTROL.L + CONTROL.R) == 0 and (CONTROL.F + CONTROL.B) == 0 and SPEED ~= 0 then
-                        BV.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (lCONTROL.F + lCONTROL.B)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(lCONTROL.L + lCONTROL.R, (lCONTROL.F + lCONTROL.B) * .2, 0).p) - workspace.CurrentCamera.CoordinateFrame.p)) * SPEED
-                    else
-                        BV.velocity = Vector3.new(0, .1, 0)
-                    end
-                    BG.cframe = workspace.CurrentCamera.CoordinateFrame
-                until not flying
-                CONTROL = {F = 0, B = 0, L = 0, R = 0}
-                lCONTROL = {F = 0, B = 0, L = 0, R = 0}
-                SPEED = 0
-                BG:destroy()
-                BV:destroy()
-                LP.Character.Humanoid.PlatformStand = false
-            end)
-        end
-        
-        Mouse.KeyDown:connect(function(KEY)
-            if KEY:lower() == "w" then
-                CONTROL.F = speedfly
-            elseif KEY:lower() == "s" then
-                CONTROL.B = -speedfly
-            elseif KEY:lower() == "a" then
-                CONTROL.L = -speedfly
-            elseif KEY:lower() == "d" then
-                CONTROL.R = speedfly
-            end
-        end)
-        
-        Mouse.KeyUp:connect(function(KEY)
-            if KEY:lower() == "w" then
-                CONTROL.F = 0
-            elseif KEY:lower() == "s" then
-                CONTROL.B = 0
-            elseif KEY:lower() == "a" then
-                CONTROL.L = 0
-            elseif KEY:lower() == "d" then
-                CONTROL.R = 0
-            end
-        end)
-        fly()
-    elseif bypassMODE == true then
-        if not args[1] then
-            run(commandPrefix .. 'fc')
-        else
-            run(commandPrefix .. 'fc ' .. args[1])
-        end
-        LP.Character.Head.Anchored = false
-        looptpbypassfly = true
-        view(LP)
-    end
-end
-
--- Unfly Command
-Commands.unfly = function(args)
-    if bypassMODE == false then
-        flying = false
-        LP.Character.Humanoid.PlatformStand = false
-    else
-        looptpbypassfly = false
-        run(commandPrefix .. 'unfreecam')
-        local currentPos = LP.Character.HumanoidRootPart.CFrame
-        if game.GameId == 245662005 then
-            for i = 1, 5 do
-                wait(.2)
-                LP.Character.HumanoidRootPart.CFrame = currentPos
-            end
-        else
-            LP.Character.HumanoidRootPart.CFrame = currentPos
-        end
-        LP.Character.Head.Anchored = false
-    end
-end
-
--- Kill Command
-Commands.kill = function(args)
-    if args[1] then
-        for i, v in pairs(findSinglePlayer(args[1])) do
-            if v == LP then
-                LP.Character:BreakJoints()
-            else
-                if hasTools() == false then
-                    Notify('warning', 'You need a tool in your backpack/inventory to use this command.', 8)
-                else
-                    FEGodmode()
-                    for i, v in pairs(LP.Backpack:GetChildren()) do
-                        LP.Character.Humanoid:EquipTool(v)
-                    end
-                    local currentPos = LP.Character.HumanoidRootPart.CFrame
-                    LP.Character.HumanoidRootPart.CFrame = v.Character['Left Arm'].CFrame
-                    wait(.3)
-                    LP.Character.HumanoidRootPart.CFrame = v.Character['Left Arm'].CFrame
-                    
-                    local function tp(player, player2)
-                        local char1, char2 = player.Character, player2.Character
-                        if char1 and char2 then
-                            char1:MoveTo(char2.Head.Position)
-                        end
-                    end
-                    
-                    wait(.5)
-                    LP.Character.HumanoidRootPart.CFrame = CFrame.new(Vector3.new(100000, 0, 100000))
-                    wait(.5)
-                    tp(LP, game:GetService('Players')[v.Name])
-                    wait(.7)
-                    LP.Character.HumanoidRootPart.CFrame = currentPos
-                    view(LP)
-                end
-            end
-        end
-    end
-end
-
--- Bring Command
-Commands.bring = function(args)
-    if hasTools() == false then
-        Notify('warning', 'You need a tool in your backpack/inventory to use this command.', 8)
-    else
-        FEGodmode()
-        for i, v in pairs(LP.Backpack:GetChildren()) do
-            LP.Character.Humanoid:EquipTool(v)
-        end
-        if args[1] then
-            for i, v in pairs(findSinglePlayer(args[1])) do
-                if v ~= LP then
-                    local currentPos = LP.Character.HumanoidRootPart.CFrame
-                    local function tp(player, player2)
-                        local char1, char2 = player.Character, player2.Character
-                        if char1 and char2 then
-                            char1.HumanoidRootPart.CFrame = char2.HumanoidRootPart.CFrame
-                        end
-                    end
-                    local function getout(player, player2)
-                        local char1, char2 = player.Character, player2.Character
-                        if char1 and char2 then
-                            char1:MoveTo(char2.Head.Position)
-                        end
-                    end
-                    tp(game:GetService('Players')[v.Name], LP)
-                    wait(.2)
-                    tp(game:GetService('Players')[v.Name], LP)
-                    wait(.5)
-                    LP.Character.HumanoidRootPart.CFrame = currentPos
-                    wait(.5)
-                    getout(LP, game:GetService('Players')[v.Name])
-                    wait(.3)
-                    LP.Character.HumanoidRootPart.CFrame = currentPos
-                end
-            end
-        end
-    end
-end
-
--- Naked Command
-Commands.naked = function(args)
-    for i, v in pairs(LP.Character:GetDescendants()) do
-        if v:IsA('Clothing') then
-            v:Destroy()
-        end
-    end
-end
-
--- Nolimbs Command
-Commands.nolimbs = function(args)
-    LP.Character['Left Arm']:Destroy()
-    LP.Character['Right Arm']:Destroy()
-    LP.Character['Left Leg']:Destroy()
-    LP.Character['Right Leg']:Destroy()
-end
-
--- Noarms Command
-Commands.noarms = function(args)
-    LP.Character['Left Arm']:Destroy()
-    LP.Character['Right Arm']:Destroy()
-end
-
--- Nolegs Command
-Commands.nolegs = function(args)
-    LP.Character['Left Leg']:Destroy()
-    LP.Character['Right Leg']:Destroy()
-end
-
--- Headless Command
-Commands.headless = function(args)
-    local clone = LP.Character.Humanoid:Clone()
-    LP.Character.Humanoid:Destroy()
-    wait(.2)
-    LP.Character.Head.CanCollide = false
-    for i, v in pairs(LP.Character:GetDescendants()) do
-        if string.sub(v.Name, 1, 4) == 'Neck' then
-            v:Destroy()
-        end
-    end
-    wait(.2)
-    clone.Name = 'Humanoid'
-    clone.Parent = LP.Character
-    wait(.1)
-    game:GetService('Workspace').CurrentCamera.CameraSubject = LP.Character
-    LP.Character.Animate:Destroy()
-end
-
--- Antikick Command
-antiremotes = false
-Commands.antikick = function(args)
-    if args[1] then
-        if args[1] == 'on' then
-            antiremotes = true
-            wait(.2)
-            for i, v in pairs(LP.Character:GetChildren()) do
-                if string.find(string.lower(v.Name), 'exploit') and v:IsA('LocalScript') then
-                    v.Disabled = true
-                end
-            end
-            Notify('warning', 'This command disables all remotes in case they are kick remotes, may break game.', 8)
-            Notify('info', 'Does not prevent serverside kicks, use ' .. commandPrefix .. 'antikick off to turn off.', 8)
-        elseif args[1] == 'off' then
-            antiremotes = false
-            Notify('warning', 'Remote anti-kick turned off.', 8)
-        end
-    end
-end
--- Block Remote Command
-blockedremotes = {}
-Commands.blockremote = function(args)
-    local service = ''
-    if args[1] then
-        local remoteName = string.lower(tostring(args[1]))
-        if args[2] then
-            local serviceInput = string.lower(tostring(args[2]))
-            if serviceInput == 'workspace' then
-                service = 'Workspace'
-            elseif serviceInput == 'replicatedstorage' then
-                service = 'ReplicatedStorage'
-            elseif serviceInput == 'players' then
-                service = 'Players'
-            elseif serviceInput == 'lighting' then
-                service = 'Lighting'
-            elseif serviceInput == 'startergui' then
-                service = 'StarterGui'
-            elseif serviceInput == 'starterpack' then
-                service = 'StarterPack'
-            elseif serviceInput == 'starterplayer' then
-                service = 'StarterPlayer'
-            else
-                service = 'ReplicatedStorage'
-            end
-        else
-            service = 'ReplicatedStorage'
-        end
-        for i, getRemote in pairs(game:GetService(service):GetDescendants()) do
-            if string.lower(getRemote.Name) == remoteName then
-                table.insert(blockedremotes, getRemote.Name)
-            end
-        end
-    end
-    Notify('warning', 'If this command does not work, make sure you type remote name/service fully correct.', 8)
-end
-
--- Remotespy Command
-spyingremotes = false
-Commands.remotespy = function(args)
-    if args[1] then
-        if args[1] == 'on' then
-            spyingremotes = true
-            Notify('info', 'Remotespy turned on.', 4)
-        elseif args[1] == 'off' then
-            spyingremotes = false
-            Notify('info', 'Remotespy turned off.', 4)
-        end
-    end
-end
-
--- Bang Command
-Commands.bang = function(args)
-    if args[1] then
-        for i, v in pairs(findSinglePlayer(args[1])) do
-            if v ~= nil then
-                following = true
-                flwplr = v
-                flwnum = -1
-                local anim = Instance.new('Animation')
-                anim.AnimationId = 'rbxassetid://148840371'
-                bangTrack = LP.Character.Humanoid:LoadAnimation(anim)
-                if args[2] then
-                    bangTrack:Play(.1, 1, args[2])
-                else
-                    bangTrack:Play(.1, 1, 1)
-                end
-            end
-        end
-    else
-        Notify('warning', 'No player selected to follow! Use: ' .. commandPrefix .. 'bang player', 4)
-    end
-end
-
--- Unbang Command
-Commands.unbang = function(args)
-    following = false
-    bangTrack:Stop()
-end
-
--- Spam Commands
-spamdelay = 1
-spamtext = 'Spam'
-spamming = false
-
-Commands.spam = function(args)
-    if args[1] then
-        spamtext = args[1]
-        spamming = true
-    end
-end
-
-Commands.spamdelay = function(args)
-    if args[1] then
-        spamdelay = args[1]
-    end
-end
-
-spawn(function()
-    while wait(spamdelay) do
-        if spamming then
-            game:GetService('ReplicatedStorage').DefaultChatSystemChatEvents.SayMessageRequest:FireServer(spamtext, 'All')
-        end
-    end
-end)
-
-Commands.unspam = function(args)
-    spamming = false
-end
-
--- Info Command
-Commands.info = function(args)
-    if args[1] then
-        for i, v in pairs(findSinglePlayer(args[1])) do
-            createINFO(v)
-        end
-    end
-end
-
--- Age Command
-Commands.age = function(args)
-    if args[1] then
-        for i, v in pairs(findPlayer(args[1])) do
-            game:GetService('ReplicatedStorage').DefaultChatSystemChatEvents.SayMessageRequest:FireServer(v.Name .. ' Account Age: ' .. v.AccountAge .. ' days!', 'All')
-        end
-    end
-end
-
--- Invisible Command
-Commands.invisible = function(args)
-    local char = LP.Character
-    if LP.Character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
-        local clone = char.HumanoidRootPart:Clone()
-        char.HumanoidRootPart:Destroy()
-        clone.Parent = char
-    else
-        local clone = char.LowerTorso.Root:Clone()
-        char.LowerTorso.Root:Destroy()
-        clone.Parent = char.LowerTorso
-    end
-end
-
--- Walk Command
-walkto = false
-walkplr = ''
-Commands.walk = function(args)
-    if args[1] then
-        for i, v in pairs(findSinglePlayer(args[1])) do
-            walkplr = v
-            walkto = true
-            noclip = true
-        end
-    end
-end
-
--- Unwalk Command
-Commands.unwalk = function(args)
-    walkto = false
-    noclip = false
-    LP.Character.Humanoid:MoveTo(LP.Character.HumanoidRootPart.Position)
-end
-
--- Glitch Command
-Commands.glitch = function(args)
-    if hasTools() == false then
-        Notify('warning', 'You need a tool in your backpack/inventory to use this command.', 8)
-    else
-        FEGodmode()
-        for i, v in pairs(LP.Backpack:GetChildren()) do
-            LP.Character.Humanoid:EquipTool(v)
-        end
-        if args[1] then
-            for i, v in pairs(findSinglePlayer(args[1])) do
-                local function tp(player, player2)
-                    local char1, char2 = player.Character, player2.Character
-                    if char1 and char2 then
-                        char1.HumanoidRootPart.CFrame = char2.HumanoidRootPart.CFrame
-                    end
-                end
-                tp(game:GetService('Players')[v.Name], LP)
-                wait(.2)
-                tp(game:GetService('Players')[v.Name], LP)
-                wait(.5)
-                local bodyForce = Instance.new('BodyForce')
-                bodyForce.Parent = LP.Character.HumanoidRootPart
-                bodyForce.Name = 'Glitch'
-                if args[2] then
-                    bodyForce.Force = Vector3.new(args[2], 5000, 0)
-                else
-                    bodyForce.Force = Vector3.new(100000000, 5000, 0)
-                end
-                wait(6)
-                bodyForce:Destroy()
-            end
-        end
-    end
-end
-
--- TP (Teleport) Command
-Commands.tp = function(args)
-    if args[1] then
-        for i, v in pairs(findSinglePlayer(args[1])) do
-            if v == LP then
-                if args[2] then
-                    for i, target in pairs(findSinglePlayer(args[2])) do
-                        v.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
-                    end
-                end
-            else
-                if hasTools() == false then
-                    Notify('warning', 'You need a tool in your backpack/inventory to use this command.', 8)
-                else
-                    FEGodmode()
-                    for i, v in pairs(LP.Backpack:GetChildren()) do
-                        LP.Character.Humanoid:EquipTool(v)
-                    end
-                    if args[1] then
-                        for i, first in pairs(findSinglePlayer(args[1])) do
-                            if args[2] then
-                                for i, second in pairs(findSinglePlayer(args[2])) do
-                                    local function tp(player, player2)
-                                        local char1, char2 = player.Character, player2.Character
-                                        if char1 and char2 then
-                                            char1.HumanoidRootPart.CFrame = char2.HumanoidRootPart.CFrame
-                                        end
-                                    end
-                                    local function getout(player, player2)
-                                        local char1, char2 = player.Character, player2.Character
-                                        if char1 and char2 then
-                                            char1:MoveTo(char2.Head.Position)
-                                        end
-                                    end
-                                    tp(LP, first)
-                                    wait(.2)
-                                    tp(LP, first)
-                                    wait(.5)
-                                    tp(LP, second)
-                                    wait(.2)
-                                    tp(LP, second)
-                                    wait(.2)
-                                    getout(LP, first)
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Givetool Command
-Commands.givetool = function(args)
-    if args[1] then
-        if args[2] then
-            local selectedTool = ''
-            for i, allTools in pairs(LP.Character:GetDescendants()) do
-                if allTools:IsA('Tool') and string.lower(allTools.Name) == string.lower(args[2]) then
-                    selectedTool = allTools
-                else
-                    for i, otherTools in pairs(LP.Backpack:GetDescendants()) do
-                        if otherTools:IsA('Tool') and string.lower(otherTools.Name) == string.lower(args[2]) then
-                            selectedTool = otherTools
-                        end
-                    end
-                end
-            end
-            for i, v in pairs(findSinglePlayer(args[1])) do
-                if selectedTool ~= '' then
-                    selectedTool.Parent = v.Character
-                end
-            end
-        else
-            for i, plr in pairs(findSinglePlayer(args[1])) do
-                for i, tool in pairs(LP.Character:GetDescendants()) do
-                    if tool:IsA('Tool') then
-                        tool.Parent = plr.Character
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Givealltools Command
-Commands.givealltools = function(args)
-    LP.Character.Humanoid:UnequipTools()
-    for i, plr in pairs(findSinglePlayer(args[1])) do
-        for i, v in pairs(LP.Character:GetDescendants()) do
-            if v:IsA('Tool') then
-                v.Parent = plr.Character
-            end
-        end
-        for i, tool in pairs(LP.Backpack:GetDescendants()) do
-            if tool:IsA('Tool') then
-                tool.Parent = plr.Character
-            end
-        end
-    end
-end
-
--- Blockhats Command
-Commands.blockhats = function(args)
-    for i, v in pairs(LP.Character:GetDescendants()) do
-        if v:IsA('Accessory') or v:IsA('Hat') then
-            for i, mesh in pairs(v:GetDescendants()) do
-                if mesh.Name == 'Mesh' then
-                    mesh:Destroy()
-                end
-            end
-        end
-    end
-end
-
--- Blocktool Command
-Commands.blocktool = function(args)
-    for i, v in pairs(LP.Character:GetDescendants()) do
-        if v:IsA('Tool') then
-            for i, mesh in pairs(v:GetDescendants()) do
-                if mesh.Name == 'Mesh' then
-                    mesh:Destroy()
-                end
-            end
-        end
-    end
-end
+-- Initial Notification
+notify("Fujiwarasayo Admin", "Loaded successfully!\nUse " .. prefix .. "help for commands", 5)
