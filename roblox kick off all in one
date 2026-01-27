@@ -1,0 +1,25 @@
+local scripts = {
+    "https://raw.githubusercontent.com/scr1ptyureishirayukimikotofujiwarasayo/our-roblox-scripts/refs/heads/main/kick%20off%20infinite%20stamina",
+    "https://raw.githubusercontent.com/scr1ptyureishirayukimikotofujiwarasayo/our-roblox-scripts/refs/heads/main/kick%20off%20aim%20assist",
+    "https://raw.githubusercontent.com/scr1ptyureishirayukimikotofujiwarasayo/our-roblox-scripts/refs/heads/main/kick%20off%20tackle%20assist%20script"
+}
+
+local HttpService = game:GetService("HttpService")
+
+-- Function to load and execute a script from URL
+local function executeScript(url)
+    local success, result = pcall(function()
+        local response = HttpService:GetAsync(url)
+        return loadstring(response)()
+    end)
+    
+    if not success then
+        warn("Failed to execute script from " .. url .. ": " .. tostring(result))
+    end
+end
+
+-- Execute all scripts concurrently
+for _, url in ipairs(scripts) do
+    coroutine.wrap(executeScript)(url)
+    task.wait() -- Small delay to prevent potential conflicts
+end
