@@ -351,7 +351,7 @@ Title.BorderSizePixel = 0
 Title.Size = UDim2.new(0, 250, 0, 20)
 Title.Font = Enum.Font.SourceSans
 Title.TextSize = 18
-Title.Text = "shirayukimikoto and fujiwarasayo's Admin v" .. currentVersion
+Title.Text = "shiray and fuji's IY v" .. currentVersion
 
 do
 	local emoji = ({
@@ -762,7 +762,7 @@ Credits.Position = UDim2.new(0, 0, 0.9, 30)
 Credits.Size = UDim2.new(0, 250, 0, 20)
 Credits.Font = Enum.Font.SourceSansLight
 Credits.FontSize = Enum.FontSize.Size14
-Credits.Text = "Mod by shirayukimikoto and fujiwarasayo // Original by Edge & Team"
+Credits.Text = "Modded by shirayukimikoto and fujiwarasayo // Original by Edge & Team"
 Credits.TextColor3 = Color3.new(1, 1, 1)
 Credits.ZIndex = 10
 
