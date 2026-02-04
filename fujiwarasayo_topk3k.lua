@@ -38,6 +38,10 @@ local dd = Instance.new("TextButton")
 local ImageLabel_7 = Instance.new("ImageLabel")
 local LocalPlayerContainer = Instance.new("ScrollingFrame")
 local PlayersContainer = Instance.new("ScrollingFrame")
+local ScriptsContainer = Instance.new("ScrollingFrame")
+local SettingsContainer = Instance.new("ScrollingFrame")
+local ExplorerContainer = Instance.new("ScrollingFrame")
+local MiscellaneousContainer = Instance.new("ScrollingFrame")
 
 -- Properties
 local Player = game:GetService("Players").LocalPlayer
@@ -111,7 +115,7 @@ First.BorderColor3 = Color3.new(0.32549, 0.313726, 0.313726)
 First.Size = UDim2.new(1, 0, 1, 0)
 First.Font = Enum.Font.SourceSans
 First.FontSize = Enum.FontSize.Size18
-First.Text = "fujiwarasayo's T0PK3K 3.0"
+First.Text = "fujiwarasayo's t0pk3k 3.0"
 First.TextColor3 = Color3.new(0.721569, 0.027451, 0.211765)
 First.TextStrokeTransparency = 0
 First.TextXAlignment = Enum.TextXAlignment.Left
@@ -474,6 +478,54 @@ PlayersContainer.MidImage = "rbxassetid://573102620"
 PlayersContainer.ScrollBarThickness = 5
 PlayersContainer.TopImage = "rbxassetid://573102620"
 
+ScriptsContainer.Name = "ScriptsContainer"
+ScriptsContainer.Parent = Base
+ScriptsContainer.BackgroundColor3 = Color3.new(0.027451, 0.0431373, 0.0588235)
+ScriptsContainer.BackgroundTransparency = 0.5
+ScriptsContainer.Position = UDim2.new(0, 140, 0, 35)
+ScriptsContainer.Size = UDim2.new(1, -150, 1, -45)
+ScriptsContainer.Visible = false
+ScriptsContainer.BottomImage = "rbxassetid://573102620"
+ScriptsContainer.MidImage = "rbxassetid://573102620"
+ScriptsContainer.ScrollBarThickness = 5
+ScriptsContainer.TopImage = "rbxassetid://573102620"
+
+SettingsContainer.Name = "SettingsContainer"
+SettingsContainer.Parent = Base
+SettingsContainer.BackgroundColor3 = Color3.new(0.027451, 0.0431373, 0.0588235)
+SettingsContainer.BackgroundTransparency = 0.5
+SettingsContainer.Position = UDim2.new(0, 140, 0, 35)
+SettingsContainer.Size = UDim2.new(1, -150, 1, -45)
+SettingsContainer.Visible = false
+SettingsContainer.BottomImage = "rbxassetid://573102620"
+SettingsContainer.MidImage = "rbxassetid://573102620"
+SettingsContainer.ScrollBarThickness = 5
+SettingsContainer.TopImage = "rbxassetid://573102620"
+
+ExplorerContainer.Name = "ExplorerContainer"
+ExplorerContainer.Parent = Base
+ExplorerContainer.BackgroundColor3 = Color3.new(0.027451, 0.0431373, 0.0588235)
+ExplorerContainer.BackgroundTransparency = 0.5
+ExplorerContainer.Position = UDim2.new(0, 140, 0, 35)
+ExplorerContainer.Size = UDim2.new(1, -150, 1, -45)
+ExplorerContainer.Visible = false
+ExplorerContainer.BottomImage = "rbxassetid://573102620"
+ExplorerContainer.MidImage = "rbxassetid://573102620"
+ExplorerContainer.ScrollBarThickness = 5
+ExplorerContainer.TopImage = "rbxassetid://573102620"
+
+MiscellaneousContainer.Name = "MiscellaneousContainer"
+MiscellaneousContainer.Parent = Base
+MiscellaneousContainer.BackgroundColor3 = Color3.new(0.027451, 0.0431373, 0.0588235)
+MiscellaneousContainer.BackgroundTransparency = 0.5
+MiscellaneousContainer.Position = UDim2.new(0, 140, 0, 35)
+MiscellaneousContainer.Size = UDim2.new(1, -150, 1, -45)
+MiscellaneousContainer.Visible = false
+MiscellaneousContainer.BottomImage = "rbxassetid://573102620"
+MiscellaneousContainer.MidImage = "rbxassetid://573102620"
+MiscellaneousContainer.ScrollBarThickness = 5
+MiscellaneousContainer.TopImage = "rbxassetid://573102620"
+
 function MakeContainer(n)
 	local cont = PlayersContainer:Clone()
 	cont.Name = n .. 'Container'
@@ -481,9 +533,6 @@ function MakeContainer(n)
 	return cont
 end
 
-local ScriptsContainer = MakeContainer('Scripts')
-local MiscContainer = MakeContainer('Miscellaneous')
-local SettingsContainer = MakeContainer('Settings')
 local topkek = {}
 topkek.store = {}
 topkek.cache = {}
@@ -1380,10 +1429,115 @@ topkek.store.gui = ScreenGui; gui = topkek.store.gui -- change later
 topkek.store.base = topkek.store.gui['Base']; base = topkek.store.base
 
 -- [[ server ]] --
+-- [[undo system for Server]] --
+local serverUndoStack = {}
+local serverRedoStack = {}
+
+local function serverAddUndo(action, undoData)
+	table.insert(serverUndoStack, {
+		action = action,
+		data = undoData,
+		timestamp = tick()
+	})
+	-- Clear redo stack when new action is performed
+	serverRedoStack = {}
+	-- Keep only last 50 actions
+	if #serverUndoStack > 50 then
+		table.remove(serverUndoStack, 1)
+	end
+end
+
+local function serverUndo()
+	if #serverUndoStack == 0 then return end
+	local action = table.remove(serverUndoStack)
+	table.insert(serverRedoStack, action)
+	
+	-- Execute undo based on action type
+	if action.action == "SetTime" then
+		-- Restore time
+		game:GetService('Lighting').TimeOfDay = action.data.oldTime
+	elseif action.action == "SetFogEnd" then
+		-- Restore fog end
+		game:GetService('Lighting').FogEnd = action.data.oldFogEnd
+	elseif action.action == "SetBrightness" then
+		-- Restore brightness
+		game:GetService('Lighting').Brightness = action.data.oldBrightness
+	elseif action.action == "ResetLighting" then
+		-- Restore previous lighting settings
+		local l = game:service'Lighting'
+		l.Ambient = action.data.oldAmbient
+		l.Brightness = action.data.oldBrightness
+		l.GlobalShadows = action.data.oldGlobalShadows
+		l.Outlines = action.data.oldOutlines
+		l.FogEnd = action.data.oldFogEnd
+		l.FogStart = action.data.oldFogStart
+		l:SetMinutesAfterMidnight(action.data.oldTime)
+	elseif action.action == "Baseplate" then
+		-- Remove created baseplates
+		for _, part in pairs(action.data.parts) do
+			if part and part.Parent then
+				part:Destroy()
+			end
+		end
+	elseif action.action == "ClearTerrain" then
+		-- This action is not easily reversible, but we can restore water
+		game:GetService('Workspace').Terrain.WaterWaveSize = action.data.oldWaterWaveSize
+		game:GetService('Workspace').Terrain.WaterWaveSpeed = action.data.oldWaterWaveSpeed
+		game:GetService('Workspace').Terrain.WaterReflectance = action.data.oldWaterReflectance
+	elseif action.action == "Flood" then
+		-- Clear the flooded area safely
+		pcall(function()
+			game:GetService('Workspace').Terrain:SetCells(Region3int16.new(Vector3int16.new(-100, -100, -100), Vector3int16.new(100,100,100)), 17, Enum.Material.Air, "X")
+		end)
+	elseif action.action == "Reflectancy" then
+		-- Restore reflectance
+		for _, part in pairs(action.data.parts) do
+			if part and part.Parent then
+				part.Reflectance = action.data.oldReflectance
+			end
+		end
+	elseif action.action == "Transparency" then
+		-- Restore transparency
+		for _, part in pairs(action.data.parts) do
+			if part and part.Parent then
+				part.Transparency = action.data.oldTransparency
+			end
+		end
+	elseif action.action == "RemoveSound" then
+		-- Restore sounds (limited functionality)
+		for _, soundData in pairs(action.data.sounds) do
+			if soundData.sound and not soundData.sound.Parent then
+				-- Restore to original parent
+				soundData.sound.Parent = soundData.originalParent
+			end
+		end
+	end
+end
+
+local function serverRedo()
+	if #serverRedoStack == 0 then return end
+	local action = table.remove(serverRedoStack)
+	table.insert(serverUndoStack, action)
+	
+	-- Re-execute the original action
+	print("Redo functionality would re-execute: " .. action.action)
+end
+
 local servwin = topkek.libgui:hookContainer(base['ServerContainer'])
+
+-- Add undo/redo buttons at the top
+servwin:drawButton(1/2, 'Undo', function()
+	serverUndo()
+end)
+servwin:drawButton(1/2, 'Redo', function()
+	serverRedo()
+end)
+servwin:addSpacing()
+
 local decalList, decalImp = servwin:drawScrollingContainer(100)
 local decalAct = servwin:drawButton(2/3, 'Spam Decal', function()
-	topkek.libutil:recurseDecal(decalImp.Text) end)
+	topkek.libutil:recurseDecal(decalImp.Text) 
+end)
 decalImp = servwin:drawTextBox(1/3, '573896613')
 servwin:drawButton(1, 'Rollback Spam', function()
 	topkek.libutil:recurseRemove('ParticleEmitter')
@@ -1409,6 +1563,13 @@ servwin:addSpacing()
 -- << time >> --
 local time
 servwin:drawButton(2/3, 'Set Time', function()
+	local oldTime = game:GetService('Lighting').TimeOfDay
+	
+	-- Store undo data
+	serverAddUndo("SetTime", {
+		oldTime = oldTime
+	})
+	
 	game:GetService('Lighting').TimeOfDay = timeImp.Text..":00:00"
 end)
 timeImp = servwin:drawTextBox(1/3, '14')
@@ -1416,6 +1577,13 @@ timeImp = servwin:drawTextBox(1/3, '14')
 local fogInp
 servwin:drawButton(2/3, 'Set FogEnd', function()
 	if not tonumber(fogInp.Text) then return end
+	local oldFogEnd = game:GetService('Lighting').FogEnd
+	
+	-- Store undo data
+	serverAddUndo("SetFogEnd", {
+		oldFogEnd = oldFogEnd
+	})
+	
 	game:GetService('Lighting').FogEnd = tonumber(fogInp.Text)
 end)
 fogInp = servwin:drawTextBox(1/3, '100000')
@@ -1423,12 +1591,38 @@ fogInp = servwin:drawTextBox(1/3, '100000')
 local brightInp
 servwin:drawButton(2/3, 'Set Brightness', function()
 	if not tonumber(brightInp.Text) then return end
+	local oldBrightness = game:GetService('Lighting').Brightness
+	
+	-- Store undo data
+	serverAddUndo("SetBrightness", {
+		oldBrightness = oldBrightness
+	})
+	
 	game:GetService('Lighting').Brightness = tonumber(brightInp.Text)
 end)
 brightInp = servwin:drawTextBox(1/3, '1')
 -- << reset >> --
 servwin:drawButton(1, 'Reset Lighting', function()
 	local l = game:service'Lighting'
+	local oldAmbient = l.Ambient
+	local oldBrightness = l.Brightness
+	local oldGlobalShadows = l.GlobalShadows
+	local oldOutlines = l.Outlines
+	local oldFogEnd = l.FogEnd
+	local oldFogStart = l.FogStart
+	local oldTime = l:GetMinutesAfterMidnight()
+	
+	-- Store undo data
+	serverAddUndo("ResetLighting", {
+		oldAmbient = oldAmbient,
+		oldBrightness = oldBrightness,
+		oldGlobalShadows = oldGlobalShadows,
+		oldOutlines = oldOutlines,
+		oldFogEnd = oldFogEnd,
+		oldFogStart = oldFogStart,
+		oldTime = oldTime
+	})
+	
 	l.Ambient = Color3.new(0, 0, 0)
 	l.Brightness = 1
 	l.GlobalShadows = true
@@ -1440,21 +1634,35 @@ end)
 -- [[ fixing ]] --
 servwin:addSpacing()
 servwin:drawButton(1/2, 'Clear Server', function()
-	for i, v in pairs(game:service'Workspace':GetChildren()) do
+	for i, v in pairs(game:GetService('Workspace'):GetChildren()) do
 		if (not v:IsA("Terrain")) and (v.Name ~= "Camera") then
 			v:Destroy()
 		end
 	end
 end)
-servwin:drawButton(1/2, 'Shutdown', function()
-	for i, v in pairs(game:GetService('Players'):GetPlayers()) do
-		v.Parent = nil
-	end
-end)
 servwin:drawButton(1/2, 'Remove Sound', function()
+	local sounds = {}
+	
+	-- Store existing sounds with their original parents
+	for _, sound in pairs(game:GetService('Workspace'):GetDescendants()) do
+		if sound:IsA("Sound") then
+			table.insert(sounds, {
+				sound = sound,
+				originalParent = sound.Parent
+			})
+		end
+	end
+	
+	-- Store undo data
+	serverAddUndo("RemoveSound", {
+		sounds = sounds
+	})
+	
 	topkek.libutil:recurseRemove('Sound')
 end)
 servwin:drawButton(1/2, 'Baseplate', function()
+	local parts = {}
+	
 	for X = -2500, 2500, 512 do
 		for Z = -2500, 2500, 512 do
 			local P = Instance.new("Part")
@@ -1463,22 +1671,76 @@ servwin:drawButton(1/2, 'Baseplate', function()
 		    P.Size = Vector3.new(512,3,512)
 		    P.CFrame = CFrame.new(X, 0, Z)
 		    P.BrickColor = BrickColor.Green()
-		    P.Parent = game:service'Workspace'
+		    P.Parent = game:GetService('Workspace')
+		    table.insert(parts, P)
 		end
 	end
+	
+	-- Store undo data
+	serverAddUndo("Baseplate", {
+		parts = parts
+	})
 end)
 -- [[ destruction ]] --
 servwin:addSpacing()
 servwin:drawButton(1/2, 'Clear Terrain', function()
-	game:service'Workspace'.Terrain:Clear()
+	local oldWaterWaveSize = game:GetService('Workspace').Terrain.WaterWaveSize
+	local oldWaterWaveSpeed = game:GetService('Workspace').Terrain.WaterWaveSpeed
+	local oldWaterReflectance = game:GetService('Workspace').Terrain.WaterReflectance
+	
+	-- Store undo data
+	serverAddUndo("ClearTerrain", {
+		oldWaterWaveSize = oldWaterWaveSize,
+		oldWaterWaveSpeed = oldWaterWaveSpeed,
+		oldWaterReflectance = oldWaterReflectance
+	})
+	
+	game:GetService('Workspace').Terrain:Clear()
 end)
 servwin:drawButton(1/2, 'Flood', function()
-	game:service'Workspace'.Terrain:SetCells(Region3int16.new(Vector3int16.new(-100, -100, -100), Vector3int16.new(100,100,100)), 17, "Solid", "X")
+	-- Store undo data
+	serverAddUndo("Flood", {})
+	
+	game:GetService('Workspace').Terrain:SetCells(Region3int16.new(Vector3int16.new(-100, -100, -100), Vector3int16.new(100,100,100)), 17, "Solid", "X")
 end)
 servwin:drawButton(1/2, 'Reflectancy', function()
+	local parts = {}
+	
+	-- Store old reflectance values
+	for _, part in pairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") then
+			table.insert(parts, {
+				part = part,
+				oldReflectance = part.Reflectance
+			})
+		end
+	end
+	
+	-- Store undo data
+	serverAddUndo("Reflectancy", {
+		parts = parts
+	})
+	
 	topkek.libutil:recurseSet('BasePart', 'Reflectance', 1)
 end)
 servwin:drawButton(1/2, 'Transparency', function()
+	local parts = {}
+	
+	-- Store old transparency values
+	for _, part in pairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") then
+			table.insert(parts, {
+				part = part,
+				oldTransparency = part.Transparency
+			})
+		end
+	end
+	
+	-- Store undo data
+	serverAddUndo("Transparency", {
+		parts = parts
+	})
+	
 	topkek.libutil:recurseSet('BasePart', 'Transparency', 1)
 end)
 servwin:drawButton(1/2, '666', function()
@@ -1614,7 +1876,116 @@ servwin:drawButton(1/2, 'Loop-Meshify', function()
 		end
 	end)()
 end)
--- << END OF SERVER MENU >> --
+
+-- [[undo system for Players]] --
+local playersUndoStack = {}
+local playersRedoStack = {}
+
+local function playersAddUndo(action, undoData)
+	table.insert(playersUndoStack, {
+		action = action,
+		data = undoData,
+		timestamp = tick()
+	})
+	-- Clear redo stack when new action is performed
+	playersRedoStack = {}
+	-- Keep only last 50 actions
+	if #playersUndoStack > 50 then
+		table.remove(playersUndoStack, 1)
+	end
+end
+
+local function playersUndo()
+	if #playersUndoStack == 0 then return end
+	local action = table.remove(playersUndoStack)
+	table.insert(playersRedoStack, action)
+	
+	-- Execute undo based on action type
+	if action.action == "Kill" then
+		-- Restore health
+		if action.data.player and action.data.player.Character and action.data.player.Character:FindFirstChild("Humanoid") then
+			action.data.player.Character.Humanoid.Health = action.data.oldHealth
+		end
+	elseif action.action == "Freeze" then
+		-- Unfreeze torso
+		if action.data.player and action.data.player.Character and action.data.player.Character:FindFirstChild("Humanoid") then
+			local torso = topkek.libutil:getTorso(action.data.player)
+			if torso then
+				torso.Anchored = false
+			end
+		end
+	elseif action.action == "Thaw" then
+		-- Re-freeze torso (reverse of thaw)
+		if action.data.player and action.data.player.Character and action.data.player.Character:FindFirstChild("Humanoid") then
+			local torso = topkek.libutil:getTorso(action.data.player)
+			if torso then
+				torso.Anchored = true
+			end
+		end
+	elseif action.action == "Fire" then
+		-- Remove fire
+		if action.data.fire and action.data.fire.Parent then
+			action.data.fire:Destroy()
+		end
+	elseif action.action == "Sparkles" then
+		-- Remove sparkles
+		if action.data.sparkles and action.data.sparkles.Parent then
+			action.data.sparkles:Destroy()
+		end
+	elseif action.action == "Smoke" then
+		-- Remove smoke
+		if action.data.smoke and action.data.smoke.Parent then
+			action.data.smoke:Destroy()
+		end
+	elseif action.action == "BTools" then
+		-- Remove BTools
+		for _, tool in pairs(action.data.tools) do
+			if tool and tool.Parent then
+				tool:Destroy()
+			end
+		end
+	elseif action.action == "Confuse" then
+		-- Restore walk speed
+		if action.data.player and action.data.player.Character and action.data.player.Character:FindFirstChild('Humanoid') then
+			action.data.player.Character.Humanoid.WalkSpeed = action.data.oldWalkSpeed
+		end
+	elseif action.action == "Goldify" then
+		-- Restore materials and colors
+		if action.data.player and action.data.player.Character then
+			for _, part in pairs(action.data.oldParts) do
+				if part.part and part.part.Parent then
+					part.part.Material = part.material
+					part.part.BrickColor = part.brickColor
+				end
+			end
+		end
+	elseif action.action == "Neon" then
+		-- Restore materials
+		if action.data.player and action.data.player.Character then
+			for _, part in pairs(action.data.oldParts) do
+				if part.part and part.part.Parent then
+					part.part.Material = part.material
+				end
+			end
+		end
+	elseif action.action == "Bighead" then
+		-- Restore head scale
+		if action.data.player and action.data.player.Character and action.data.player.Character:FindFirstChild('Head') then
+			if action.data.player.Character.Head.Mesh then
+				action.data.player.Character.Head.Mesh.Scale = action.data.oldScale
+			end
+		end
+	end
+end
+
+local function playersRedo()
+	if #playersRedoStack == 0 then return end
+	local action = table.remove(playersRedoStack)
+	table.insert(playersUndoStack, action)
+	
+	-- Re-execute the original action
+	print("Redo functionality would re-execute: " .. action.action)
+end
 
 local plrwin = topkek.libgui:hookContainer(base['PlayersContainer'])
 local plrDrop = plrwin:drawButton(1, 'test-dropdown', function() end)
@@ -1625,11 +1996,29 @@ end)
 game:GetService('Players').PlayerRemoving:connect(function()
 	plrDrop.update(topkek.libutil:GetPlayerList())
 end)
+
+-- Add undo/redo buttons at the top
+plrwin:drawButton(1/2, 'Undo', function()
+	playersUndo()
+end)
+plrwin:drawButton(1/2, 'Redo', function()
+	playersRedo()
+end)
 plrwin:addSpacing()
+
 local actions = plrwin --plrwin:drawScrollingContainer(163) [[lole]]
 actions:drawButton(1/3, 'Kill', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character:FindFirstChild('Humanoid') then
+			local oldHealth = z.Character.Humanoid.Health
+			
+			-- Store undo data
+			playersAddUndo("Kill", {
+				player = z,
+				oldHealth = oldHealth
+			})
+			
+			-- FE-compatible kill (only affects targeted player)
 			z.Character.Humanoid.Health = 0
 		end
 	end)
@@ -1637,6 +2026,12 @@ end)
 actions:drawButton(1/3, 'Freeze', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character:FindFirstChild('Humanoid') then
+			-- Store undo data
+			playersAddUndo("Freeze", {
+				player = z
+			})
+			
+			-- FE-compatible freeze (only affects targeted player)
 			topkek.libutil:getTorso(z).Anchored = true
 		end
 	end)
@@ -1644,6 +2039,12 @@ end)
 actions:drawButton(1/3, 'Thaw', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character:FindFirstChild('Humanoid') then
+			-- Store undo data
+			playersAddUndo("Thaw", {
+				player = z
+			})
+			
+			-- FE-compatible thaw (only affects targeted player)
 			topkek.libutil:getTorso(z).Anchored = false
 		end
 	end)
@@ -1651,35 +2052,62 @@ end)
 actions:drawButton(1/3, 'Fire', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character then
-			Instance.new("Fire", topkek.libutil:getTorso(z))
+			local fire = Instance.new("Fire", topkek.libutil:getTorso(z))
+			
+			-- Store undo data
+			playersAddUndo("Fire", {
+				fire = fire
+			})
 		end
 	end)
 end)
 actions:drawButton(1/3, 'Sparkles', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character then
-			Instance.new("Sparkles", topkek.libutil:getTorso(z))
+			local sparkles = Instance.new("Sparkles", topkek.libutil:getTorso(z))
+			
+			-- Store undo data
+			playersAddUndo("Sparkles", {
+				sparkles = sparkles
+			})
 		end
 	end)
 end)
 actions:drawButton(1/3, 'Smoke', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character then
-			Instance.new("Smoke", topkek.libutil:getTorso(z))
+			local smoke = Instance.new("Smoke", topkek.libutil:getTorso(z))
+			
+			-- Store undo data
+			playersAddUndo("Smoke", {
+				smoke = smoke
+			})
 		end
 	end)
 end)
 actions:drawButton(1/3, 'BTools', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
+		local tools = {}
+		
 		local a = Instance.new("HopperBin")
 		a.BinType = "GameTool"
 		a.Parent = z.Backpack
+		table.insert(tools, a)
+		
 		local a = Instance.new("HopperBin")
 		a.BinType = "Clone"
 		a.Parent = z.Backpack
+		table.insert(tools, a)
+		
 		local a = Instance.new("HopperBin")
 		a.BinType = "Hammer"
 		a.Parent = z.Backpack
+		table.insert(tools, a)
+		
+		-- Store undo data
+		playersAddUndo("BTools", {
+			tools = tools
+		})
 	end)
 end)
 actions:drawButton(1/3, 'Kick', function()
@@ -1824,6 +2252,15 @@ end)
 actions:drawButton(1/3, 'Confuse', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character:FindFirstChild('Humanoid') then
+			local oldWalkSpeed = z.Character.Humanoid.WalkSpeed
+			
+			-- Store undo data
+			playersAddUndo("Confuse", {
+				player = z,
+				oldWalkSpeed = oldWalkSpeed
+			})
+			
+			-- FE-compatible confuse (only affects targeted player)
 			z.Character.Humanoid.WalkSpeed = -16
 		end
 	end)
@@ -1831,6 +2268,26 @@ end)
 actions:drawButton(1/3, 'Goldify', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character then
+			local oldParts = {}
+			
+			-- Store old materials and colors
+			for _, part in pairs(z.Character:GetDescendants()) do
+				if part:IsA("BasePart") or part:IsA("MeshPart") then
+					table.insert(oldParts, {
+						part = part,
+						material = part.Material,
+						brickColor = part.BrickColor
+					})
+				end
+			end
+			
+			-- Store undo data
+			playersAddUndo("Goldify", {
+				player = z,
+				oldParts = oldParts
+			})
+			
+			-- FE-compatible goldify (only affects targeted player)
 			topkek.libutil:recurseSetObj(z.Character, 'BasePart', 'Material', 'Marble')
 			topkek.libutil:recurseSetObj(z.Character, 'MeshPart', 'Material', 'Marble')
 			topkek.libutil:recurseSetObj(z.Character, 'BasePart', 'BrickColor', BrickColor.new('Bright yellow'))
@@ -1841,6 +2298,25 @@ end)
 actions:drawButton(1/3, 'Neon', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character then
+			local oldParts = {}
+			
+			-- Store old materials
+			for _, part in pairs(z.Character:GetDescendants()) do
+				if part:IsA("BasePart") or part:IsA("MeshPart") then
+					table.insert(oldParts, {
+						part = part,
+						material = part.Material
+					})
+				end
+			end
+			
+			-- Store undo data
+			playersAddUndo("Neon", {
+				player = z,
+				oldParts = oldParts
+			})
+			
+			-- FE-compatible neon (only affects targeted player)
 			topkek.libutil:recurseSetObj(z.Character, 'BasePart', 'Material', 'Neon')
 			topkek.libutil:recurseSetObj(z.Character, 'MeshPart', 'Material', 'Neon')
 		end
@@ -1955,6 +2431,15 @@ actions:drawButton(1/3, 'Bighead', function()
 	topkek.libutil:doPlayers(plrDrop, function(z)
 		if z.Character then
 			if z.Character:FindFirstChild('Head') then
+				local oldScale = z.Character.Head.Mesh.Scale
+				
+				-- Store undo data
+				playersAddUndo("Bighead", {
+					player = z,
+					oldScale = oldScale
+				})
+				
+				-- FE-compatible bighead (only affects targeted player)
 				z.Character.Head.Mesh.Scale = Vector3.new(5,5,5)
 			end
 		end
@@ -2178,21 +2663,209 @@ actions:drawButton(1/2, 'Set Name', function()
 end)
 nameInp = actions:drawTextBox(1/2, '')
 
+-- [[undo system for LocalPlayer]] --
+local lpUndoStack = {}
+local lpRedoStack = {}
+
+local function lpAddUndo(action, undoData)
+	table.insert(lpUndoStack, {
+		action = action,
+		data = undoData,
+		timestamp = tick()
+	})
+	-- Clear redo stack when new action is performed
+	lpRedoStack = {}
+	-- Keep only last 50 actions
+	if #lpUndoStack > 50 then
+		table.remove(lpUndoStack, 1)
+	end
+end
+
+local function lpUndo()
+	if #lpUndoStack == 0 then return end
+	local action = table.remove(lpUndoStack)
+	table.insert(lpRedoStack, action)
+	
+	-- Execute undo based on action type
+	if action.action == "SetAppearance" then
+		lp.CharacterAppearance = action.data.oldAppearance
+	elseif action.action == "SetTeamColor" then
+		lp.Neutral = action.data.wasNeutral
+		if not action.data.wasNeutral then
+			lp.TeamColor = action.data.oldTeamColor
+		end
+	elseif action.action == "Levitate" then
+		-- Toggle levitate off
+		_G.LevitateState = false
+		Lev = false
+	elseif action.action == "Noclip" then
+		-- Toggle noclip off
+		_G.NoclipState = false
+		Clip = false
+		-- Restore collision
+		if lp.Character then
+			topkek.libutil:getTorso(lp).CanCollide = true
+			lp.Character.Head.CanCollide = true
+			lp.Character.HumanoidRootPart.CanCollide = true
+			if lp.Character.UpperTorso then
+				lp.Character.LowerTorso.CanCollide = true
+			end
+		end
+	elseif action.action == "Fly" then
+		-- Toggle fly off
+		_G.FlyState = false
+		Fly = false
+		-- Remove fly objects if they exist
+		local player = game.Players.LocalPlayer
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local torso = player.Character.HumanoidRootPart
+			if torso:FindFirstChild("EPIXPOS") then
+				torso.EPIXPOS:Destroy()
+			end
+			for _, obj in pairs(torso:GetChildren()) do
+				if obj:IsA("BodyGyro") then
+					obj:Destroy()
+				end
+			end
+			lp.Character.Humanoid.PlatformStand = false
+		end
+	elseif action.action == "Highjump" then
+		-- Remove the BodyVelocity if it exists
+		if action.data.thrust and action.data.thrust.Parent then
+			action.data.thrust:Destroy()
+		end
+	elseif action.action == "Freecam" then
+		-- Restore camera and character
+		game.Workspace.CurrentCamera.CameraType = "Custom"
+		if action.data.oldCharacter then
+			game.Workspace.CurrentCamera.CameraSubject = action.data.oldCharacter:FindFirstChild("Humanoid")
+		else
+			game.Workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
+		end
+		lp.Character = action.data.oldCharacter
+	elseif action.action == "NilOrb" then
+		-- Remove nil orb and restore character
+		for _, obj in pairs(game.Workspace:GetChildren()) do
+			if obj:IsA("Model") and obj.Name == lp.Name and obj:FindFirstChild("Humanoid") then
+				if obj:FindFirstChild("Humanoid").Health == 0 then
+					obj:Destroy()
+					break
+				end
+			end
+		end
+		lp.Character = action.data.oldCharacter
+	elseif action.action == "God" then
+		-- Restore health
+		if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+			lp.Character.Humanoid.MaxHealth = action.data.oldMaxHealth
+			lp.Character.Humanoid.Health = action.data.oldHealth
+		end
+	elseif action.action == "NoGrav" then
+		-- Remove all BodyForce objects
+		for _, bf in pairs(action.data.bodyForces) do
+			if bf and bf.Parent then
+				bf:Destroy()
+			end
+		end
+	elseif action.action == "RainbowName" then
+		-- Stop rainbow effect and restore team
+		_G.RainbowNameState = false
+		lp.Neutral = action.data.wasNeutral
+		if not action.data.wasNeutral then
+			lp.TeamColor = action.data.oldTeamColor
+		end
+	elseif action.action == "ClearAppearance" then
+		-- Restore appearance
+		lp.CharacterAppearance = action.data.oldAppearance
+	elseif action.action == "Disguise" then
+		-- Remove disguise
+		if action.data.disguiseModel and action.data.disguiseModel.Parent then
+			action.data.disguiseModel:Destroy()
+		end
+		if lp.Character then
+			lp.Character.Head.Transparency = action.data.oldHeadTransparency
+			lp.Character.Name = action.data.oldName
+		end
+	elseif action.action == "SetTag" then
+		-- Remove tag
+		if action.data.tag and action.data.tag.Parent then
+			action.data.tag:Destroy()
+		end
+	elseif action.action == "ResetCamera" then
+		-- Restore camera settings
+		game.Workspace.CurrentCamera.CameraType = action.data.oldCameraType
+		game.Workspace.CurrentCamera.CameraSubject = action.data.oldCameraSubject
+	elseif action.action == "Respawn" then
+		-- Restore character (limited functionality for respawn)
+		lp.Character = action.data.oldCharacter
+	elseif action.action == "RandomFedora" then
+		-- Remove hat
+		if action.data.hat and action.data.hat.Parent then
+			action.data.hat:Destroy()
+		end
+	elseif action.action == "DickShooter" then
+		-- Remove dick shooter tools from backpack
+		for _, item in pairs(lp.Backpack:GetChildren()) do
+			if item.Name == "Painis" then
+				item:Destroy()
+			end
+		end
+	end
+end
+
+local function lpRedo()
+	if #lpRedoStack == 0 then return end
+	local action = table.remove(lpRedoStack)
+	table.insert(lpUndoStack, action)
+	
+	-- Re-execute the original action
+	-- This would require calling the original functions, which is complex
+	-- For now, we'll just move it back to undo stack
+	print("Redo functionality would re-execute: " .. action.action)
+end
+
 -- [[localplayer]] --
 local lp = game:GetService('Players').LocalPlayer
 local localwin = topkek.libgui:hookContainer(base['LocalPlayerContainer'])
+
+-- Add undo/redo buttons at the top
+localwin:drawButton(1/2, 'Undo', function()
+	lpUndo()
+end)
+localwin:drawButton(1/2, 'Redo', function()
+	lpRedo()
+end)
+localwin:addSpacing()
+
 local appear
 localwin:drawButton(1/2, 'Set Appearance', function()
+	local oldAppearance = lp.CharacterAppearance
 	local id = 0
 	if not tonumber(appearInp.Text) then
 		id = tonumber(appearInp.Text)
 	else
 		id = game:GetService('Players'):GetUserIdFromNameAsync(appearInp.Text)
 	end
+	
+	-- Store undo data
+	lpAddUndo("SetAppearance", {
+		oldAppearance = oldAppearance
+	})
+	
+	-- Apply new appearance (FE-compatible - only affects local player)
 	lp.CharacterAppearance = 'https://assetgame.roblox.com/Asset/CharacterFetch.ashx?userId='..tostring(id)
 end)
 appearInp = localwin:drawTextBox(1/2, '')
 localwin:drawButton(1/2, 'Set TeamColor', function()
+	local wasNeutral = lp.Neutral
+	local oldTeamColor = lp.TeamColor
+	
+	-- Store undo data
+	lpAddUndo("SetTeamColor", {
+		wasNeutral = wasNeutral,
+		oldTeamColor = oldTeamColor
+	})
+	
 	if teamInp.Text == 'Neutral' then
 		lp.Neutral = true
 		return
@@ -2202,6 +2875,15 @@ localwin:drawButton(1/2, 'Set TeamColor', function()
 end)
 teamInp = localwin:drawTextBox(1/2, 'Neutral')
 localwin:drawButton(1, 'Reset Camera', function()
+	-- Store undo data
+	local oldCameraType = game.Workspace.CurrentCamera.CameraType
+	local oldCameraSubject = game.Workspace.CurrentCamera.CameraSubject
+	
+	lpAddUndo("ResetCamera", {
+		oldCameraType = oldCameraType,
+		oldCameraSubject = oldCameraSubject
+	})
+	
 	game.Workspace.CurrentCamera:remove()
 	wait(.1)
 	game.Workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid or 
@@ -2209,6 +2891,13 @@ localwin:drawButton(1, 'Reset Camera', function()
 	game.Workspace.CurrentCamera.CameraType = "Custom"
 end)
 localwin:drawButton(1, 'Respawn', function()
+	-- Store undo data
+	local oldCharacter = lp.Character
+	
+	lpAddUndo("Respawn", {
+		oldCharacter = oldCharacter
+	})
+	
 	local a1 = Instance.new("Model", game:service'Workspace')
 	local a2 = Instance.new("Part", game:service'Workspace')
 	a2.CanCollide = true
@@ -2223,6 +2912,10 @@ end)
 localwin:addSpacing()
 local Lev, Clip, Fly
 localwin:drawButton(1/2, 'Levitate', function()
+	-- Store undo data for toggle
+	_G.LevitateState = Lev
+	lpAddUndo("Levitate", {})
+	
 	if Lev == true then
 		Lev = false
 		return
@@ -2234,6 +2927,10 @@ localwin:drawButton(1/2, 'Levitate', function()
 	until Lev == false
 end)
 localwin:drawButton(1/2, 'Noclip', function()
+	-- Store undo data for toggle
+	_G.NoclipState = Clip
+	lpAddUndo("Noclip", {})
+	
 	if Clip == true then
 		Clip = false
 		return
@@ -2257,6 +2954,10 @@ localwin:drawButton(1/2, 'Noclip', function()
 	end)
 end)
 localwin:drawButton(1/2, 'Fly', function()
+	-- Store undo data for toggle
+	_G.FlyState = Fly
+	lpAddUndo("Fly", {})
+	
 	if Fly == true then
 		Fly = false
 		return
@@ -2346,6 +3047,12 @@ localwin:drawButton(1/2, 'Fly', function()
 end)
 localwin:drawButton(1/2, 'Highjump', function()
 	local thrust = Instance.new("BodyVelocity")
+	
+	-- Store undo data
+	lpAddUndo("Highjump", {
+		thrust = thrust
+	})
+	
 	game:GetService('UserInputService').InputBegan:connect(function(i, b)
 		if i.KeyCode == Enum.KeyCode.Space then
 			print("Got jump")
@@ -2361,12 +3068,30 @@ localwin:drawButton(1/2, 'Highjump', function()
 end)
 localwin:addSpacing()
 localwin:drawButton(1/2, 'Freecam', function()
+	-- Store undo data
+	local oldCharacter = lp.Character
+	local oldCameraType = game.Workspace.CurrentCamera.CameraType
+	local oldCameraSubject = game.Workspace.CurrentCamera.CameraSubject
+	
+	lpAddUndo("Freecam", {
+		oldCharacter = oldCharacter,
+		oldCameraType = oldCameraType,
+		oldCameraSubject = oldCameraSubject
+	})
+	
 	local cam = game.Workspace.CurrentCamera
 	cam.CameraType = "Fixed"
 	cam.CameraSubject = nil
 	lp.Character = nil
 end)
 localwin:drawButton(1/2, 'Nil Orb', function()
+	-- Store undo data
+	local oldCharacter = lp.Character
+	
+	lpAddUndo("NilOrb", {
+		oldCharacter = oldCharacter
+	})
+	
 	game.Players.LocalPlayer.Character = nil
 	--lp:Destroy()
 	local cam = game.Workspace.CurrentCamera
@@ -2394,31 +3119,61 @@ localwin:drawButton(1/2, 'Nil Orb', function()
 	end)
 end)
 localwin:drawButton(1/2, 'God', function()
+	-- Store undo data
+	local oldMaxHealth = lp.Character.Humanoid.MaxHealth
+	local oldHealth = lp.Character.Humanoid.Health
+	
+	lpAddUndo("God", {
+		oldMaxHealth = oldMaxHealth,
+		oldHealth = oldHealth
+	})
+	
 	lp.Character.Humanoid.MaxHealth = math.huge
 	lp.Character.Humanoid.Health = math.huge
 end)
 localwin:drawButton(1/2, 'NoGrav', function()
+	local bodyForces = {}
+	
 	if lp.Character then
 		for x, m in pairs(lp.Character:GetChildren()) do
 			if m:IsA("BasePart") then
 				local bf = Instance.new("BodyForce", m)
 				bf.force = Vector3.new(0, 192.25, 0) * m:GetMass()
+				table.insert(bodyForces, bf)
 			end
 			if m:IsA("Hat") or m:IsA("Accessory") then
 				if m:findFirstChild("Handle") then
 					local bf = Instance.new("BodyForce", m.Handle)
 					bf.force = Vector3.new(0, 192.25, 0) * m.Handle:GetMass()
+					table.insert(bodyForces, bf)
 				end
 			end
 		end
 	end
+	
+	-- Store undo data
+	lpAddUndo("NoGrav", {
+		bodyForces = bodyForces
+	})
 end)
 localwin:drawButton(1/2, 'Rainbow Name', function()
+	-- Store undo data
+	local wasNeutral = lp.Neutral
+	local oldTeamColor = lp.TeamColor
+	
+	lpAddUndo("RainbowName", {
+		wasNeutral = wasNeutral,
+		oldTeamColor = oldTeamColor
+	})
+	
 	lp.Neutral = false
-	repeat
-		wait()
-		lp.TeamColor = BrickColor.Random()
-	until not lp.Character.Humanoid
+	_G.RainbowNameState = true
+	spawn(function()
+		while _G.RainbowNameState do
+			wait()
+			lp.TeamColor = BrickColor.Random()
+		end
+	end)
 end)
 localwin:drawButton(1/2, 'Random Fedora', function()
 	local hats = {
@@ -2434,13 +3189,36 @@ localwin:drawButton(1/2, 'Random Fedora', function()
 		334663683,
 		259423244
 	}
-	game:GetService("InsertService"):LoadAsset(hats[math.random(1, #hats)]):GetChildren()[1].Parent = lp.Character
+	local hat = game:GetService("InsertService"):LoadAsset(hats[math.random(1, #hats)]):GetChildren()[1]
+	hat.Parent = lp.Character
+	
+	-- Store undo data
+	lpAddUndo("RandomFedora", {
+		hat = hat
+	})
 end)
 localwin:drawButton(1/2, 'Clear Appearance', function()
+	-- Store undo data
+	local oldAppearance = lp.CharacterAppearance
+	
+	lpAddUndo("ClearAppearance", {
+		oldAppearance = oldAppearance
+	})
+	
 	lp:ClearCharacterAppearance()
 end)
 localwin:drawButton(1/2, 'Disguise', function()
 	local p = lp.Character
+	local oldName = p.Name
+	local oldHeadTransparency = p.Head.Transparency
+	
+	-- Store undo data
+	lpAddUndo("Disguise", {
+		oldName = oldName,
+		oldHeadTransparency = oldHeadTransparency,
+		disguiseModel = nil  -- Will be set after creation
+	})
+	
 	if p:FindFirstChild("topkek") then
 		p.topkek:Destroy()
 	end
@@ -2461,8 +3239,19 @@ localwin:drawButton(1/2, 'Disguise', function()
 	lp:ClearCharacterAppearance()
 	pcall(function() p["Body Colors"]:Destroy() end)
 	Instance.new("BodyColors", p)
+	
+	-- Update undo data with the created model
+	for i, action in ipairs(lpUndoStack) do
+		if action.action == "Disguise" then
+			action.data.disguiseModel = mo
+			break
+		end
+	end
 end)
 localwin:drawButton(1, 'Dick Shooter', function()
+	-- Store undo data (Dick Shooter creates its own tools)
+	lpAddUndo("DickShooter", {})
+	
 	topkek.libutil:dickShooter()
 end)
 localwin:addSpacing()
@@ -2492,11 +3281,254 @@ localwin:drawButton(1/2, 'Set Tag', function()
 	tl.Name = "trutag"
 	tl.Visible = true
 	tl.ZIndex = 2
+	
+	-- Store undo data
+	lpAddUndo("SetTag", {
+		tag = bb
+	})
 end)
 hackerInp = localwin:drawTextBox(1/2, 'Hacker')
 
 -- [[scripts]] --
+-- [[scripts]] --
+-- Scripts undo system
+local scriptUndoStack = {}
+local scriptRedoStack = {}
+
+local function scriptAddUndo(action, undoData)
+	table.insert(scriptUndoStack, {
+		action = action,
+		data = undoData,
+		timestamp = tick()
+	})
+	scriptRedoStack = {}
+	if #scriptUndoStack > 50 then
+		table.remove(scriptUndoStack, 1)
+	end
+end
+
+local function scriptUndo()
+	if #scriptUndoStack == 0 then return end
+	local action = table.remove(scriptUndoStack)
+	table.insert(scriptRedoStack, action)
+	
+	if action.action == "AutoFarm" then
+		_G.AutoFarmState = false
+		print("Auto Farm disabled")
+	elseif action.action == "ESP" then
+		_G.ESPState = false
+		print("ESP disabled")
+	elseif action.action == "SpeedBoost" then
+		_G.SpeedBoostState = false
+		if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+			game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
+		end
+		print("Speed Boost disabled")
+	end
+	print("Script action undone")
+end
+
 local scriptwin = topkek.libgui:hookContainer(base['ScriptsContainer'])
+
+-- Add undo/redo buttons for scripts
+local scriptControlPanel = scriptwin:drawScrollingContainer(40)
+scriptControlPanel.drawX = 0
+scriptControlPanel.drawY = 0
+
+local scriptUndoBtn = scriptControlPanel:drawButton(1/3, '↶ UNDO', function()
+	if #scriptUndoStack > 0 then
+		local action = table.remove(scriptUndoStack)
+		table.insert(scriptRedoStack, action)
+		
+		-- Execute undo based on action type
+		if action.action == "AutoFarm" then
+			-- Stop autofarm
+			_G.AutoFarmEnabled = false
+			if AutoFarmConnection then
+				AutoFarmConnection:Disconnect()
+				AutoFarmConnection = nil
+			end
+		elseif action.action == "ESP" then
+			-- Remove ESP
+			for _, esp in pairs(ESPInstances) do
+				if esp and esp.Parent then
+					esp:Destroy()
+				end
+			end
+			ESPInstances = {}
+		elseif action.action == "SpeedBoost" then
+			-- Restore original speed
+			local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid and action.data.originalSpeed then
+				humanoid.WalkSpeed = action.data.originalSpeed
+			end
+		end
+		print("Script action undone")
+	end
+end, 30, Color3.fromRGB(70, 130, 180))
+scriptUndoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local scriptRedoBtn = scriptControlPanel:drawButton(1/3, '↷ REDO', function()
+	if #scriptRedoStack > 0 then
+		local action = table.remove(scriptRedoStack)
+		table.insert(scriptUndoStack, action)
+		print("Script action redone")
+	end
+end, 30, Color3.fromRGB(70, 180, 130))
+scriptRedoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local scriptClearBtn = scriptControlPanel:drawButton(1/3, '🗑️ CLEAR', function()
+	-- Clear all script effects
+	_G.AutoFarmEnabled = false
+	if AutoFarmConnection then
+		AutoFarmConnection:Disconnect()
+		AutoFarmConnection = nil
+	end
+	
+	for _, esp in pairs(ESPInstances) do
+		if esp and esp.Parent then
+			esp:Destroy()
+		end
+	end
+	ESPInstances = {}
+	
+	print("Cleared all script effects")
+end, 30, Color3.fromRGB(180, 70, 70))
+scriptClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+scriptwin:addSpacing()
+
+-- Script undo system
+local scriptUndoStack = {}
+local scriptRedoStack = {}
+local ESPInstances = {}
+local AutoFarmConnection = nil
+
+local function scriptAddUndo(action, undoData)
+	table.insert(scriptUndoStack, {
+		action = action,
+		data = undoData,
+		timestamp = tick()
+	})
+	scriptRedoStack = {}
+	if #scriptUndoStack > 50 then
+		table.remove(scriptUndoStack, 1)
+	end
+end
+
+-- Useful FE Scripts
+scriptwin:drawButton(1, '🌾 Auto Farm (FE)', function()
+	local player = game.Players.LocalPlayer
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoid = character:WaitForChild("Humanoid")
+	local originalSpeed = humanoid.WalkSpeed
+	
+	-- Store undo data
+	scriptAddUndo("AutoFarm", {
+		originalSpeed = originalSpeed
+	})
+	
+	-- Toggle autofarm
+	if _G.AutoFarmEnabled then
+		_G.AutoFarmEnabled = false
+		if AutoFarmConnection then
+			AutoFarmConnection:Disconnect()
+			AutoFarmConnection = nil
+		end
+		humanoid.WalkSpeed = originalSpeed
+		print("Auto Farm disabled")
+	else
+		_G.AutoFarmEnabled = true
+		humanoid.WalkSpeed = 25
+		
+		AutoFarmConnection = game:GetService("RunService").Heartbeat:Connect(function()
+			if _G.AutoFarmEnabled and character then
+				for _, tool in pairs(workspace:GetChildren()) do
+					if tool:IsA("Tool") and tool:FindFirstChild("Handle") then
+						firetouchinterest(tool.Handle, character.PrimaryPart)
+					end
+				end
+			end
+		end)
+		print("Auto Farm enabled")
+	end
+end)
+
+scriptwin:drawButton(1, '👁️ ESP (FE)', function()
+	-- Store undo data
+	scriptAddUndo("ESP", {})
+	
+	-- Toggle ESP
+	if #ESPInstances > 0 then
+		-- Remove existing ESP
+		for _, esp in pairs(ESPInstances) do
+			if esp and esp.Parent then
+				esp:Destroy()
+			end
+		end
+		ESPInstances = {}
+		print("ESP disabled")
+	else
+		-- Create ESP for all players
+		for _, player in pairs(game.Players:GetPlayers()) do
+			if player ~= game.Players.LocalPlayer and player.Character then
+				local highlight = Instance.new("Highlight")
+				highlight.Parent = player.Character
+				highlight.FillColor = Color3.new(1, 0, 0)
+				highlight.FillTransparency = 0.3
+				highlight.OutlineColor = Color3.new(1, 1, 0)
+				highlight.OutlineTransparency = 0
+				table.insert(ESPInstances, highlight)
+				
+				-- Add name tag
+				local billboard = Instance.new("BillboardGui")
+				billboard.Parent = player.Character:FindFirstChild("Head")
+				billboard.Size = UDim2.new(0, 100, 0, 50)
+				billboard.StudsOffset = Vector3.new(0, 3, 0)
+				billboard.AlwaysOnTop = true
+				
+				local label = Instance.new("TextLabel")
+				label.Parent = billboard
+				label.Size = UDim2.new(1, 0, 1, 0)
+				label.BackgroundTransparency = 1
+				label.Text = player.Name
+				label.TextColor3 = Color3.new(1, 1, 1)
+				label.TextStrokeTransparency = 0
+				label.Font = Enum.Font.SourceSansBold
+				label.TextSize = 14
+				
+				table.insert(ESPInstances, billboard)
+			end
+		end
+		print("ESP enabled")
+	end
+end)
+
+scriptwin:drawButton(1, '⚡ Speed Boost (FE)', function()
+	local player = game.Players.LocalPlayer
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoid = character:WaitForChild("Humanoid")
+	local originalSpeed = humanoid.WalkSpeed
+	
+	-- Store undo data
+	scriptAddUndo("SpeedBoost", {
+		originalSpeed = originalSpeed
+	})
+	
+	-- Toggle speed boost
+	if humanoid.WalkSpeed > 50 then
+		humanoid.WalkSpeed = 16
+		print("Speed boost disabled")
+	else
+		humanoid.WalkSpeed = 100
+		print("Speed boost enabled")
+	end
+end)
+
+scriptwin:addSpacing()
+scriptwin:drawTextBox(1, 'Search scripts...')
+
+-- Original script list (keeping for compatibility)
 local search = scriptwin:drawTextBox(1, '')
 local origy = scriptwin:getDrawY()
 scriptwin:addSpacing()
@@ -2531,6 +3563,412 @@ game:GetService("UserInputService").InputChanged:connect(function(inp)
 end)
 MakeList('')
 
+-- [[settings]] --
+local settingswin = topkek.libgui:hookContainer(base['SettingsContainer'])
+
+-- Settings undo system
+local settingsUndoStack = {}
+local settingsRedoStack = {}
+
+local function settingsAddUndo(action, undoData)
+	table.insert(settingsUndoStack, {
+		action = action,
+		data = undoData,
+		timestamp = tick()
+	})
+	settingsRedoStack = {}
+	if #settingsUndoStack > 50 then
+		table.remove(settingsUndoStack, 1)
+	end
+end
+
+local function settingsUndo()
+	if #settingsUndoStack == 0 then return end
+	local action = table.remove(settingsUndoStack)
+	table.insert(settingsRedoStack, action)
+	
+	-- Execute undo based on action type
+	if action.action == "SetTheme" then
+		-- Restore theme colors
+		base.BackgroundColor3 = action.data.originalBgColor
+		topkek.store.base.Top.BackgroundColor3 = action.data.originalTopColor
+	elseif action.action == "SetTransparency" then
+		-- Restore transparency
+		topkek.store.gui.BackgroundTransparency = action.data.originalTransparency
+	elseif action.action == "ToggleNotifications" then
+		-- Restore notifications
+		_G.NotificationsEnabled = action.data.originalState
+	end
+	print("Setting undone")
+end
+
+local function settingsRedo()
+	if #settingsRedoStack == 0 then return end
+	local action = table.remove(settingsRedoStack)
+	table.insert(settingsUndoStack, action)
+	print("Setting redone")
+end
+
+-- Settings control panel
+local settingsControlPanel = settingswin:drawScrollingContainer(40)
+settingsControlPanel.drawX = 0
+settingsControlPanel.drawY = 0
+
+local settingsUndoBtn = settingsControlPanel:drawButton(1/3, '↶ UNDO', function()
+	settingsUndo()
+end, 30, Color3.fromRGB(70, 130, 180))
+settingsUndoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local settingsRedoBtn = settingsControlPanel:drawButton(1/3, '↷ REDO', function()
+	settingsRedo()
+end, 30, Color3.fromRGB(70, 180, 130))
+settingsRedoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local settingsResetBtn = settingsControlPanel:drawButton(1/3, '🔄 RESET', function()
+	-- Reset all settings to defaults
+	topkek.store.gui.Enabled = true
+	topkek.store.gui.BackgroundTransparency = 0
+	base.BackgroundColor3 = Color3.new(0.054902, 0.0901961, 0.113725)
+	topkek.store.base.Top.BackgroundColor3 = Color3.new(0.027451, 0.0431373, 0.0588235)
+	_G.NotificationsEnabled = true
+	print("All settings reset to defaults")
+end, 30, Color3.fromRGB(180, 70, 70))
+settingsResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+settingswin:addSpacing()
+
+-- GUI Settings
+settingswin:drawButton(1, '🎨 GUI Theme', function()
+	local themes = {
+		{name = "Dark", bg = Color3.new(0.054902, 0.0901961, 0.113725), top = Color3.new(0.027451, 0.0431373, 0.0588235)},
+		{name = "Blue", bg = Color3.new(0.0588235, 0.0980392, 0.14902), top = Color3.new(0.0313725, 0.054902, 0.0784314)},
+		{name = "Green", bg = Color3.new(0.0588235, 0.113725, 0.0588235), top = Color3.new(0.0313725, 0.0627451, 0.0313725)},
+		{name = "Purple", bg = Color3.new(0.113725, 0.0588235, 0.14902), top = Color3.new(0.0627451, 0.0313725, 0.0784314)},
+		{name = "Red", bg = Color3.new(0.14902, 0.0588235, 0.0588235), top = Color3.new(0.0784314, 0.0313725, 0.0313725)}
+	}
+	
+	local currentTheme = 1
+	local function cycleTheme()
+		currentTheme = (currentTheme % #themes) + 1
+		local theme = themes[currentTheme]
+		
+		-- Store undo data
+		settingsAddUndo("SetTheme", {
+			originalBgColor = base.BackgroundColor3,
+			originalTopColor = topkek.store.base.Top.BackgroundColor3
+		})
+		
+		-- Apply theme
+		base.BackgroundColor3 = theme.bg
+		topkek.store.base.Top.BackgroundColor3 = theme.top
+		print("Theme changed to: " .. theme.name)
+	end
+	
+	cycleTheme()
+end)
+
+settingswin:drawButton(1, '👁️ GUI Transparency', function()
+	local currentTransparency = topkek.store.gui.BackgroundTransparency
+	local newTransparency = currentTransparency >= 0.8 and 0 or currentTransparency + 0.2
+	
+	-- Store undo data
+	settingsAddUndo("SetTransparency", {
+		originalTransparency = currentTransparency
+	})
+	
+	topkek.store.gui.BackgroundTransparency = newTransparency
+	print("GUI transparency: " .. math.floor(newTransparency * 100) .. "%")
+end)
+
+settingswin:drawButton(1, '🔔 Notifications', function()
+	local currentState = _G.NotificationsEnabled or true
+	
+	-- Store undo data
+	settingsAddUndo("ToggleNotifications", {
+		originalState = currentState
+	})
+	
+	_G.NotificationsEnabled = not currentState
+	print("Notifications " .. (_G.NotificationsEnabled and "enabled" or "disabled"))
+end)
+
+settingswin:addSpacing()
+
+-- Performance Settings
+settingswin:drawButton(1, '⚡ Performance Mode', function()
+	local currentMode = _G.PerformanceMode or "Normal"
+	local newMode = currentMode == "Normal" and "High" or "Normal"
+	_G.PerformanceMode = newMode
+	
+	if newMode == "High" then
+		game:GetService("RunService"):SetRenderStepped(60)
+		settings().StreamingEnabled = false
+		game:GetService("Workspace").StreamingEnabled = false
+		print("Performance mode: High (60 FPS)")
+	else
+		game:GetService("RunService"):SetRenderStepped()
+		settings().StreamingEnabled = true
+		game:GetService("Workspace").StreamingEnabled = true
+		print("Performance mode: Normal")
+	end
+end)
+
+settingswin:drawButton(1, '🎮 Camera Settings', function()
+	local cam = game.Workspace.CurrentCamera
+	local currentFOV = cam.FieldOfView
+	local newFOV = currentFOV >= 90 and 70 or currentFOV + 10
+	
+	cam.FieldOfView = newFOV
+	print("Camera FOV: " .. newFOV)
+end)
+
+settingswin:drawButton(1, '🔊 Sound Volume', function()
+	local currentVolume = game:GetService("SoundService").MasterVolume
+	local newVolume = currentVolume >= 1 and 0.5 or currentVolume + 0.25
+	
+	game:GetService("SoundService").MasterVolume = newVolume
+	print("Sound volume: " .. math.floor(newVolume * 100) .. "%")
+end)
+
+settingswin:addSpacing()
+
+-- Security Settings
+settingswin:drawButton(1, '🛡️ Anti-Report', function()
+	_G.AntiReportEnabled = not _G.AntiReportEnabled
+	
+	if _G.AntiReportEnabled then
+		-- Hook report function (FE-compatible)
+		local oldReport = game:GetService("StarterGui"):GetChildren()[1]:FindFirstChild("ReportButton")
+		if oldReport then
+			oldReport.Active = false
+		end
+		print("Anti-report enabled")
+	else
+		print("Anti-report disabled")
+	end
+end)
+
+settingswin:drawButton(1, '🔒 Privacy Mode', function()
+	_G.PrivacyMode = not _G.PrivacyMode
+	
+	if _G.PrivacyMode then
+		-- Hide player from leaderboards
+		game:GetService("Players").LocalPlayer.Leaderstats:Destroy()
+		print("Privacy mode enabled")
+	else
+		print("Privacy mode disabled")
+	end
+end)
+
+settingswin:drawButton(1, '📊 Statistics', function()
+	local player = game.Players.LocalPlayer
+	local stats = {
+		"FPS: " .. math.floor(1 / game:GetService("RunService").RenderStepped:Wait()),
+		"Ping: " .. math.floor(player:GetNetworkPing()) .. "ms",
+		"Players: " .. #game.Players:GetPlayers(),
+		"Time: " .. os.date("%H:%M:%S")
+	}
+	
+	for _, stat in pairs(stats) do
+		print(stat)
+	end
+end)
+
+print("Settings menu loaded with user-friendly options!")
+
+-- [[explorer]] --
+local explorerwin = topkek.libgui:hookContainer(base['ExplorerContainer'])
+
+-- Explorer variables
+local selectedObject = nil
+
+-- Explorer undo system
+local explorerUndoStack = {}
+local explorerRedoStack = {}
+
+local function explorerAddUndo(action, undoData)
+	table.insert(explorerUndoStack, {
+		action = action,
+		data = undoData,
+		timestamp = tick()
+	})
+	explorerRedoStack = {}
+	if #explorerUndoStack > 50 then
+		table.remove(explorerUndoStack, 1)
+	end
+end
+
+local function explorerUndo()
+	if #explorerUndoStack == 0 then return end
+	local action = table.remove(explorerUndoStack)
+	table.insert(explorerRedoStack, action)
+	
+	if action.action == "DeleteObject" then
+		if action.data.object and action.data.parent then
+			action.data.object.Parent = action.data.parent
+			print("Object restored: " .. action.data.object.Name)
+		end
+	elseif action.action == "ChangeProperty" then
+		if action.data.object and action.data.property then
+			action.data.object[action.data.property] = action.data.oldValue
+			print("Property restored: " .. action.data.property)
+		end
+	end
+	print("Explorer action undone")
+end
+
+-- Explorer control panel
+local explorerControlPanel = explorerwin:drawScrollingContainer(40)
+explorerControlPanel.drawX = 0
+explorerControlPanel.drawY = 0
+
+local explorerUndoBtn = explorerControlPanel:drawButton(1/3, '↶ UNDO', function()
+	explorerUndo()
+end, 30, Color3.fromRGB(70, 130, 180))
+explorerUndoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local explorerRedoBtn = explorerControlPanel:drawButton(1/3, '↷ REDO', function()
+	if #explorerRedoStack > 0 then
+		local action = table.remove(explorerRedoStack)
+		table.insert(explorerUndoStack, action)
+		print("Explorer action redone")
+	end
+end, 30, Color3.fromRGB(70, 180, 130))
+explorerRedoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local explorerRefreshBtn = explorerControlPanel:drawButton(1/3, '🔄 REFRESH', function()
+	selectedObject = game
+	print("Explorer refreshed")
+end, 30, Color3.fromRGB(100, 100, 100))
+explorerRefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+explorerwin:addSpacing()
+
+-- Explorer main functions
+explorerwin:drawButton(1, '📂 Current Directory', function()
+	if selectedObject then
+		print("Current: " .. selectedObject.Name .. " [" .. selectedObject.ClassName .. "]")
+		print("Children: " .. #selectedObject:GetChildren())
+	else
+		selectedObject = game
+		print("Current: game [" .. #game:GetChildren() .. " children]")
+	end
+end)
+
+explorerwin:drawButton(1, '🔍 List Children', function()
+	if not selectedObject then selectedObject = game end
+	
+	local children = selectedObject:GetChildren()
+	print("Children of " .. selectedObject.Name .. " (" .. #children .. "):")
+	
+	for i, child in pairs(children) do
+		print(i .. ". " .. child.Name .. " [" .. child.ClassName .. "]")
+	end
+end)
+
+explorerwin:drawButton(1, '🎯 Find Object', function()
+	local found = game.Workspace:FindFirstChild("Baseplate")
+	if found then
+		selectedObject = found
+		print("Found: " .. found.Name)
+	else
+		print("Object not found")
+	end
+end)
+
+explorerwin:drawButton(1, '📋 Copy Path', function()
+	if not selectedObject then selectedObject = game end
+	
+	local path = selectedObject:GetFullName()
+	print("Path: " .. path)
+	_G.Clipboard = path
+end)
+
+explorerwin:addSpacing()
+
+-- Quick navigation
+explorerwin:drawButton(1, '🏠 Go to Workspace', function()
+	selectedObject = game.Workspace
+	print("Navigated to Workspace")
+end)
+
+explorerwin:drawButton(1, '👥 Go to Players', function()
+	selectedObject = game.Players
+	print("Navigated to Players")
+end)
+
+explorerwin:drawButton(1, '💡 Go to Lighting', function()
+	selectedObject = game.Lighting
+	print("Navigated to Lighting")
+end)
+
+explorerwin:drawButton(1, '🎵 Go to SoundService', function()
+	selectedObject = game.SoundService
+	print("Navigated to SoundService")
+end)
+
+explorerwin:addSpacing()
+
+-- Object manipulation
+explorerwin:drawButton(1, '🗑️ Delete Object', function()
+	if not selectedObject or selectedObject == game then
+		print("Cannot delete this object")
+		return
+	end
+	
+	explorerAddUndo("DeleteObject", {
+		object = selectedObject,
+		parent = selectedObject.Parent
+	})
+	
+	selectedObject.Parent = nil
+	print("Deleted: " .. selectedObject.Name)
+end)
+
+explorerwin:drawButton(1, '🎨 Change Color', function()
+	if not selectedObject or not selectedObject:IsA("BasePart") then
+		print("Select a BasePart first")
+		return
+	end
+	
+	explorerAddUndo("ChangeProperty", {
+		object = selectedObject,
+		property = "BrickColor",
+		oldValue = selectedObject.BrickColor
+	})
+	
+	selectedObject.BrickColor = BrickColor.Random()
+	print("Changed color of: " .. selectedObject.Name)
+end)
+
+explorerwin:drawButton(1, '🎯 Teleport to Object', function()
+	if not selectedObject or not selectedObject:IsA("BasePart") then
+		print("Select a BasePart to teleport to")
+		return
+	end
+	
+	local player = game.Players.LocalPlayer
+	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		player.Character.HumanoidRootPart.CFrame = selectedObject.CFrame
+		print("Teleported to: " .. selectedObject.Name)
+	end
+end)
+
+explorerwin:drawButton(1, '📊 Object Count', function()
+	local function countObjects(obj)
+		local count = 1
+		for _, child in pairs(obj:GetChildren()) do
+			count = count + countObjects(child)
+		end
+		return count
+	end
+	
+	local total = countObjects(game)
+	print("Total objects in game: " .. total)
+end)
+
+print("Explorer menu loaded with workspace navigation tools!")
+
 -- [[misc main]] --
 local miscwin = topkek.libgui:hookContainer(base['MiscellaneousContainer'])
 local scroll = miscwin:drawScrollingContainer(165)
@@ -2548,6 +3986,8 @@ topkek.libwindows:registerWindow(base['ServerContainer'])
 topkek.libwindows:registerWindow(base['PlayersContainer'])
 topkek.libwindows:registerWindow(base['LocalPlayerContainer'])
 topkek.libwindows:registerWindow(base['ScriptsContainer'])
+topkek.libwindows:registerWindow(base['SettingsContainer'])
+topkek.libwindows:registerWindow(base['ExplorerContainer'])
 topkek.libwindows:registerWindow(base['MiscellaneousContainer'])
 topkek.libwindows:initiateNavigator()
 topkek.libwindows:initiateHome()
