@@ -55,7 +55,9 @@ Services = setmetatable({}, {
 			rawset(self, name, cache)
 			return cache
 		else
-			error("Invalid Service: " .. tostring(name))
+			-- Return nil instead of throwing an error so fallbacks trigger correctly
+			warn("IY: Could not load service " .. tostring(name))
+			return nil
 		end
 	end
 })
@@ -90,7 +92,9 @@ CaptureService = Services.CaptureService
 VoiceChatService = Services.VoiceChatService
 SocialService = Services.SocialService
 
-PlayerGui = cloneref(Players.LocalPlayer:FindFirstChildWhichIsA("PlayerGui"))
+-- Safely fetch PlayerGui to prevent passing `nil` to cloneref()
+local pg = Players.LocalPlayer:FindFirstChildWhichIsA("PlayerGui") or Players.LocalPlayer:WaitForChild("PlayerGui", 5)
+PlayerGui = pg and cloneref(pg) or nil
 COREGUI = Services.CoreGui or PlayerGui
 IYMouse = cloneref(Players.LocalPlayer:GetMouse())
 PlaceId, JobId = game.PlaceId, game.JobId
@@ -7890,31 +7894,51 @@ addcmd('clientantikick',{'antikick'},function(args, speaker)
 end)
 
 allow_rj = true
-addcmd('clientantiteleport',{'antiteleport'},function(args, speaker)
-	if not hookmetamethod then 
-		return notify('Incompatible Exploit','Your exploit does not support this command (missing hookmetamethod)')
+local antiTPConnection
+local lastPosition
+local oldNamecall
+
+local antiTPConnection = nil
+local antiTPLastCFrame = nil
+
+addcmd("clientantiteleport", {"antiteleport", "antitp"}, function(args, speaker)
+	if antiTPConnection then
+		antiTPConnection:Disconnect()
 	end
-	local TeleportService = TeleportService
-	local oldhmmi
-	local oldhmmnc
-	oldhmmi = hookmetamethod(game, "__index", function(self, method)
-		if self == TeleportService then
-			if method:lower() == "teleport" then
-				return error("Expected ':' not '.' calling member function Kick", 2)
-			elseif method == "TeleportToPlaceInstance" then
-				return error("Expected ':' not '.' calling member function TeleportToPlaceInstance", 2)
+	
+	-- Defaults to 2 studs per frame, but can be changed (e.g., ;antitp 5)
+	local threshold = tonumber(args[1]) or 2 
+	antiTPLastCFrame = nil
+	
+	antiTPConnection = RunService.Heartbeat:Connect(function()
+		local char = speaker.Character
+		local root = char and getRoot(char)
+		
+		if root then
+			if not antiTPLastCFrame then
+				antiTPLastCFrame = root.CFrame
+			elseif (root.Position - antiTPLastCFrame.Position).Magnitude > threshold then
+				-- Instant teleport back and kill momentum
+				root.CFrame = antiTPLastCFrame
+				root.Velocity = Vector3.new(0, 0, 0)
+				root.RotVelocity = Vector3.new(0, 0, 0)
+			else
+				-- Update position normally
+				antiTPLastCFrame = root.CFrame
 			end
 		end
-		return oldhmmi(self, method)
 	end)
-	oldhmmnc = hookmetamethod(game, "__namecall", function(self, ...)
-		if self == TeleportService and getnamecallmethod():lower() == "teleport" or getnamecallmethod() == "TeleportToPlaceInstance" then
-			return
-		end
-		return oldhmmnc(self, ...)
-	end)
+	
+	notify("Client AntiTP", "Enabled (Threshold: " .. threshold .. " studs/frame)")
+end)
 
-	notify('Client AntiTP','Client anti teleport is now active (only effective on localscript teleport)')
+addcmd("unclientantiteleport", {"unantiteleport", "unantitp"}, function(args, speaker)
+	if antiTPConnection then
+		antiTPConnection:Disconnect()
+		antiTPConnection = nil
+		antiTPLastCFrame = nil
+		notify("Client AntiTP", "Disabled")
+	end
 end)
 
 addcmd('allowrejoin',{'allowrj'},function(args, speaker)
@@ -8182,376 +8206,263 @@ addcmd('nolocate',{'unlocate'},function(args, speaker)
 end)
 
 viewing = nil
-addcmd('view',{'spectate'},function(args, speaker)
-	StopFreecam()
-	local players = getPlayer(args[1], speaker)
-	for i,v in pairs(players) do
-		if viewDied then
-			viewDied:Disconnect()
-			viewChanged:Disconnect()
-		end
-		viewing = Players[v]
-		workspace.CurrentCamera.CameraSubject = viewing.Character
-		notify('Spectate','Viewing ' .. Players[v].Name)
-		local function viewDiedFunc()
-			repeat wait() until Players[v].Character ~= nil and getRoot(Players[v].Character)
-			workspace.CurrentCamera.CameraSubject = viewing.Character
-		end
-		viewDied = Players[v].CharacterAdded:Connect(viewDiedFunc)
-		local function viewChangedFunc()
-			workspace.CurrentCamera.CameraSubject = viewing.Character
-		end
-		viewChanged = workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(viewChangedFunc)
-	end
-end)
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 
-addcmd('viewpart',{'viewp'},function(args, speaker)
-	StopFreecam()
-	if args[1] then
-		for i,v in pairs(workspace:GetDescendants()) do
-			if v.Name:lower() == getstring(1, args):lower() and v:IsA("BasePart") then
-				wait(0.1)
-				workspace.CurrentCamera.CameraSubject = v
-			end
-		end
-	end
-end)
-
-addcmd('unview',{'unspectate'},function(args, speaker)
-	StopFreecam()
-	if viewing ~= nil then
-		viewing = nil
-		notify('Spectate','View turned off')
-	end
-	if viewDied then
-		viewDied:Disconnect()
-		viewChanged:Disconnect()
-	end
-	workspace.CurrentCamera.CameraSubject = speaker.Character
-end)
-
-
-fcRunning = false
+--// State
 local Camera = workspace.CurrentCamera
+local viewing
+local viewDied, viewChanged
+local fcRunning = false
+local cameraFov = 70
+
 workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-	local newCamera = workspace.CurrentCamera
-	if newCamera then
-		Camera = newCamera
+	Camera = workspace.CurrentCamera
+end)
+
+--// Spectate
+addcmd('view', {'spectate'}, function(args, speaker)
+	StopFreecam()
+
+	local targets = getPlayer(args[1], speaker)
+	for _, name in ipairs(targets) do
+		local plr = Players:FindFirstChild(name)
+		if not plr then continue end
+
+		if viewDied then viewDied:Disconnect() end
+		if viewChanged then viewChanged:Disconnect() end
+
+		viewing = plr
+
+		local function setSubject()
+			if plr.Character then
+				Camera.CameraSubject = plr.Character:FindFirstChildWhichIsA("Humanoid") or plr.Character
+			end
+		end
+
+		setSubject()
+		notify("Spectate", "Viewing " .. plr.Name)
+
+		viewDied = plr.CharacterAdded:Connect(setSubject)
+		viewChanged = Camera:GetPropertyChangedSignal("CameraSubject"):Connect(setSubject)
 	end
 end)
 
-local INPUT_PRIORITY = Enum.ContextActionPriority.High.Value
+addcmd('viewpart', {'viewp'}, function(args)
+	StopFreecam()
+	if not args[1] then return end
 
-Spring = {} do
-	Spring.__index = Spring
+	local name = getstring(1, args):lower()
+	for _, v in ipairs(workspace:GetDescendants()) do
+		if v:IsA("BasePart") and v.Name:lower() == name then
+			Camera.CameraSubject = v
+			break
+		end
+	end
+end)
 
-	function Spring.new(freq, pos)
-		local self = setmetatable({}, Spring)
-		self.f = freq
-		self.p = pos
-		self.v = pos*0
-		return self
+addcmd('unview', {'unspectate'}, function(_, speaker)
+	StopFreecam()
+
+	if viewDied then viewDied:Disconnect() end
+	if viewChanged then viewChanged:Disconnect() end
+
+	viewing = nil
+	if speaker.Character then
+		Camera.CameraSubject = speaker.Character:FindFirstChildWhichIsA("Humanoid")
 	end
 
-	function Spring:Update(dt, goal)
-		local f = self.f*2*math.pi
-		local p0 = self.p
-		local v0 = self.v
+	notify("Spectate", "View turned off")
+end)
 
-		local offset = goal - p0
-		local decay = math.exp(-f*dt)
+--// Spring
+local Spring = {}
+Spring.__index = Spring
 
-		local p1 = goal + (v0*dt - offset*(f*dt + 1))*decay
-		local v1 = (f*dt*(offset*f - v0) + v0)*decay
-
-		self.p = p1
-		self.v = v1
-
-		return p1
-	end
-
-	function Spring:Reset(pos)
-		self.p = pos
-		self.v = pos*0
-	end
+function Spring.new(freq, pos)
+	return setmetatable({f = freq, p = pos, v = pos * 0}, Spring)
 end
 
-local cameraPos = Vector3.new()
-local cameraRot = Vector2.new()
+function Spring:Update(dt, goal)
+	local f = self.f * 2 * math.pi
+	local offset = goal - self.p
+	local decay = math.exp(-f * dt)
 
-local velSpring = Spring.new(5, Vector3.new())
-local panSpring = Spring.new(5, Vector2.new())
+	local p1 = goal + (self.v * dt - offset * (f * dt + 1)) * decay
+	local v1 = (f * dt * (offset * f - self.v) + self.v) * decay
 
-Input = {} do
+	self.p, self.v = p1, v1
+	return p1
+end
 
-	keyboard = {
-		W = 0,
-		A = 0,
-		S = 0,
-		D = 0,
-		E = 0,
-		Q = 0,
-		Up = 0,
-		Down = 0,
-		LeftShift = 0,
-	}
+function Spring:Reset(pos)
+	self.p = pos
+	self.v = pos * 0
+end
 
-	mouse = {
-		Delta = Vector2.new(),
-	}
+--// Freecam vars
+local cameraPos = Vector3.zero
+local cameraRot = Vector2.zero
 
-	NAV_KEYBOARD_SPEED = Vector3.new(1, 1, 1)
-	PAN_MOUSE_SPEED = Vector2.new(1, 1)*(math.pi/64)
-	NAV_ADJ_SPEED = 0.75
-	NAV_SHIFT_MUL = 0.25
+local velSpring = Spring.new(5, Vector3.zero)
+local panSpring = Spring.new(5, Vector2.zero)
 
+local keyboard = {W=0,A=0,S=0,D=0,E=0,Q=0,Up=0,Down=0}
+local mouse = {Delta = Vector2.zero}
+
+local navSpeed = 1
+local NAV_KEYBOARD_SPEED = Vector3.new(1,1,1)
+
+--// Input
+local function Keypress(_, state, input)
+	keyboard[input.KeyCode.Name] = (state == Enum.UserInputState.Begin) and 1 or 0
+	return Enum.ContextActionResult.Sink
+end
+
+local function MousePan(_, _, input)
+	mouse.Delta = Vector2.new(-input.Delta.y, -input.Delta.x)
+	return Enum.ContextActionResult.Sink
+end
+
+local function StartInput()
+	ContextActionService:BindAction("FreecamKeys", Keypress, false,
+		Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D,
+		Enum.KeyCode.E, Enum.KeyCode.Q, Enum.KeyCode.Up, Enum.KeyCode.Down
+	)
+	ContextActionService:BindAction("FreecamMouse", MousePan, false, Enum.UserInputType.MouseMovement)
+end
+
+local function StopInput()
+	ContextActionService:UnbindAction("FreecamKeys")
+	ContextActionService:UnbindAction("FreecamMouse")
+	table.clear(keyboard)
+	mouse.Delta = Vector2.zero
 	navSpeed = 1
-
-	function Input.Vel(dt)
-		navSpeed = math.clamp(navSpeed + dt*(keyboard.Up - keyboard.Down)*NAV_ADJ_SPEED, 0.01, 4)
-
-		local kKeyboard = Vector3.new(
-			keyboard.D - keyboard.A,
-			keyboard.E - keyboard.Q,
-			keyboard.S - keyboard.W
-		)*NAV_KEYBOARD_SPEED
-
-		local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
-
-		return (kKeyboard)*(navSpeed*(shift and NAV_SHIFT_MUL or 1))
-	end
-
-	function Input.Pan(dt)
-		local kMouse = mouse.Delta*PAN_MOUSE_SPEED
-		mouse.Delta = Vector2.new()
-		return kMouse
-	end
-
-	do
-		function Keypress(action, state, input)
-			keyboard[input.KeyCode.Name] = state == Enum.UserInputState.Begin and 1 or 0
-			return Enum.ContextActionResult.Sink
-		end
-
-		function MousePan(action, state, input)
-			local delta = input.Delta
-			mouse.Delta = Vector2.new(-delta.y, -delta.x)
-			return Enum.ContextActionResult.Sink
-		end
-
-		function Zero(t)
-			for k, v in pairs(t) do
-				t[k] = v*0
-			end
-		end
-
-		function Input.StartCapture()
-			ContextActionService:BindActionAtPriority("FreecamKeyboard",Keypress,false,INPUT_PRIORITY,
-				Enum.KeyCode.W,
-				Enum.KeyCode.A,
-				Enum.KeyCode.S,
-				Enum.KeyCode.D,
-				Enum.KeyCode.E,
-				Enum.KeyCode.Q,
-				Enum.KeyCode.Up,
-				Enum.KeyCode.Down
-			)
-			ContextActionService:BindActionAtPriority("FreecamMousePan",MousePan,false,INPUT_PRIORITY,Enum.UserInputType.MouseMovement)
-		end
-
-		function Input.StopCapture()
-			navSpeed = 1
-			Zero(keyboard)
-			Zero(mouse)
-			ContextActionService:UnbindAction("FreecamKeyboard")
-			ContextActionService:UnbindAction("FreecamMousePan")
-		end
-	end
 end
 
-function GetFocusDistance(cameraFrame)
-	local znear = 0.1
-	local viewport = Camera.ViewportSize
-	local projy = 2*math.tan(cameraFov/2)
-	local projx = viewport.x/viewport.y*projy
-	local fx = cameraFrame.rightVector
-	local fy = cameraFrame.upVector
-	local fz = cameraFrame.lookVector
-
-	local minVect = Vector3.new()
-	local minDist = 512
-
-	for x = 0, 1, 0.5 do
-		for y = 0, 1, 0.5 do
-			local cx = (x - 0.5)*projx
-			local cy = (y - 0.5)*projy
-			local offset = fx*cx - fy*cy + fz
-			local origin = cameraFrame.p + offset*znear
-			local _, hit = workspace:FindPartOnRay(Ray.new(origin, offset.unit*minDist))
-			local dist = (hit - origin).magnitude
-			if minDist > dist then
-				minDist = dist
-				minVect = offset.unit
-			end
-		end
-	end
-
-	return fz:Dot(minVect)*minDist
-end
-
+--// Freecam step
 local function StepFreecam(dt)
-	local vel = velSpring:Update(dt, Input.Vel(dt))
-	local pan = panSpring:Update(dt, Input.Pan(dt))
+	navSpeed = math.clamp(navSpeed + dt * (keyboard.Up - keyboard.Down), 0.05, 4)
 
-	local zoomFactor = math.sqrt(math.tan(math.rad(70/2))/math.tan(math.rad(cameraFov/2)))
+	local move = Vector3.new(
+		keyboard.D - keyboard.A,
+		keyboard.E - keyboard.Q,
+		keyboard.S - keyboard.W
+	)
 
-	cameraRot = cameraRot + pan*Vector2.new(0.75, 1)*8*(dt/zoomFactor)
-	cameraRot = Vector2.new(math.clamp(cameraRot.x, -math.rad(90), math.rad(90)), cameraRot.y%(2*math.pi))
+	local vel = velSpring:Update(dt, move * NAV_KEYBOARD_SPEED * navSpeed)
+	local pan = panSpring:Update(dt, mouse.Delta * (math.pi/64))
+	mouse.Delta = Vector2.zero
 
-	local cameraCFrame = CFrame.new(cameraPos)*CFrame.fromOrientation(cameraRot.x, cameraRot.y, 0)*CFrame.new(vel*Vector3.new(1, 1, 1)*64*dt)
-	cameraPos = cameraCFrame.p
+	cameraRot += pan * 8
+	cameraRot = Vector2.new(math.clamp(cameraRot.X, -math.rad(90), math.rad(90)), cameraRot.Y)
 
-	Camera.CFrame = cameraCFrame
-	Camera.Focus = cameraCFrame*CFrame.new(0, 0, -GetFocusDistance(cameraCFrame))
+	local cf = CFrame.new(cameraPos)
+		* CFrame.fromOrientation(cameraRot.X, cameraRot.Y, 0)
+		* CFrame.new(vel * 64 * dt)
+
+	cameraPos = cf.Position
+
+	Camera.CFrame = cf
+	Camera.Focus = cf * CFrame.new(0,0,-10)
 	Camera.FieldOfView = cameraFov
 end
 
-local PlayerState = {} do
-	mouseBehavior = ""
-	mouseIconEnabled = ""
-	cameraType = ""
-	cameraFocus = ""
-	cameraCFrame = ""
-	cameraFieldOfView = ""
+--// Player state
+local saved = {}
 
-	function PlayerState.Push()
-		cameraFieldOfView = Camera.FieldOfView
-		Camera.FieldOfView = 70
+local function PushState()
+	saved = {
+		type = Camera.CameraType,
+		cf = Camera.CFrame,
+		fov = Camera.FieldOfView,
+		mouse = UserInputService.MouseBehavior
+	}
 
-		cameraType = Camera.CameraType
-		Camera.CameraType = Enum.CameraType.Custom
-
-		cameraCFrame = Camera.CFrame
-		cameraFocus = Camera.Focus
-
-		mouseIconEnabled = UserInputService.MouseIconEnabled
-		UserInputService.MouseIconEnabled = true
-
-		mouseBehavior = UserInputService.MouseBehavior
-		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	end
-
-	function PlayerState.Pop()
-		Camera.FieldOfView = 70
-
-		Camera.CameraType = cameraType
-		cameraType = nil
-
-		Camera.CFrame = cameraCFrame
-		cameraCFrame = nil
-
-		Camera.Focus = cameraFocus
-		cameraFocus = nil
-
-		UserInputService.MouseIconEnabled = mouseIconEnabled
-		mouseIconEnabled = nil
-
-		UserInputService.MouseBehavior = mouseBehavior
-		mouseBehavior = nil
-	end
+	Camera.CameraType = Enum.CameraType.Scriptable
 end
 
+local function PopState()
+	if not saved.cf then return end
+
+	Camera.CameraType = saved.type
+	Camera.CFrame = saved.cf
+	Camera.FieldOfView = saved.fov
+	UserInputService.MouseBehavior = saved.mouse
+end
+
+--// Freecam control
 function StartFreecam(pos)
-	if fcRunning then
-		StopFreecam()
-	end
-	local cameraCFrame = Camera.CFrame
-	if pos then
-		cameraCFrame = pos
-	end
-	cameraRot = Vector2.new()
-	cameraPos = cameraCFrame.p
+	if fcRunning then StopFreecam() end
+
+	local cf = pos or Camera.CFrame
+	cameraPos = cf.Position
+	cameraRot = Vector2.zero
 	cameraFov = Camera.FieldOfView
 
-	velSpring:Reset(Vector3.new())
-	panSpring:Reset(Vector2.new())
+	velSpring:Reset(Vector3.zero)
+	panSpring:Reset(Vector2.zero)
 
-	PlayerState.Push()
+	PushState()
+	StartInput()
+
 	RunService:BindToRenderStep("Freecam", Enum.RenderPriority.Camera.Value, StepFreecam)
-	Input.StartCapture()
 	fcRunning = true
 end
 
 function StopFreecam()
 	if not fcRunning then return end
-	Input.StopCapture()
+
 	RunService:UnbindFromRenderStep("Freecam")
-	PlayerState.Pop()
-	workspace.Camera.FieldOfView = 70
+	StopInput()
+	PopState()
+
 	fcRunning = false
 end
 
-addcmd('freecam',{'fc'},function(args, speaker)
+--// Commands
+addcmd('freecam', {'fc'}, function()
 	StartFreecam()
 end)
 
-addcmd('freecampos',{'fcpos','fcp','freecamposition','fcposition'},function(args, speaker)
+addcmd('freecampos', {'fcpos'}, function(args)
 	if not args[1] then return end
-	local freecamPos = CFrame.new(args[1],args[2],args[3])
-	StartFreecam(freecamPos)
+	StartFreecam(CFrame.new(tonumber(args[1]), tonumber(args[2]), tonumber(args[3])))
 end)
 
-addcmd('freecamwaypoint',{'fcwp'},function(args, speaker)
-	local WPName = tostring(getstring(1, args))
-	if speaker.Character then
-		for i,_ in pairs(WayPoints) do
-			local x = WayPoints[i].COORD[1]
-			local y = WayPoints[i].COORD[2]
-			local z = WayPoints[i].COORD[3]
-			if tostring(WayPoints[i].NAME):lower() == tostring(WPName):lower() then
-				StartFreecam(CFrame.new(x,y,z))
-			end
-		end
-		for i,_ in pairs(pWayPoints) do
-			if tostring(pWayPoints[i].NAME):lower() == tostring(WPName):lower() then
-				StartFreecam(CFrame.new(pWayPoints[i].COORD[1].Position))
-			end
+addcmd('freecamgoto', {'fcgoto'}, function(args, speaker)
+	for _, name in ipairs(getPlayer(args[1], speaker)) do
+		local plr = Players:FindFirstChild(name)
+		if plr and plr.Character then
+			StartFreecam(plr.Character:GetPivot())
 		end
 	end
 end)
 
-addcmd('freecamgoto',{'fcgoto','freecamtp','fctp'},function(args, speaker)
-	local players = getPlayer(args[1], speaker)
-	for i,v in pairs(players) do
-		StartFreecam(getRoot(Players[v].Character).CFrame)
-	end
-end)
-
-addcmd('unfreecam',{'nofreecam','unfc','nofc'},function(args, speaker)
+addcmd('unfreecam', {'nofc'}, function()
 	StopFreecam()
 end)
 
-addcmd('freecamspeed',{'fcspeed'},function(args, speaker)
-	local FCspeed = args[1] or 1
-	if isNumber(FCspeed) then
-		NAV_KEYBOARD_SPEED = Vector3.new(FCspeed, FCspeed, FCspeed)
+addcmd('freecamspeed', {'fcspeed'}, function(args)
+	local s = tonumber(args[1])
+	if s then
+		NAV_KEYBOARD_SPEED = Vector3.new(s,s,s)
 	end
 end)
 
-addcmd('notifyfreecamposition',{'notifyfcpos'},function(args, speaker)
-	if fcRunning then
-		local X,Y,Z = workspace.CurrentCamera.CFrame.Position.X,workspace.CurrentCamera.CFrame.Position.Y,workspace.CurrentCamera.CFrame.Position.Z
-		local Format, Round = string.format, math.round
-		notify("Current Position", Format("%s, %s, %s", Round(X), Round(Y), Round(Z)))
-	end
+addcmd('notifyfreecamposition', {'notifyfcpos'}, function()
+	if not fcRunning then return end
+	local p = Camera.CFrame.Position
+	notify("Position", string.format("%d, %d, %d", p.X, p.Y, p.Z))
 end)
 
-addcmd('copyfreecamposition',{'copyfcpos'},function(args, speaker)
-	if fcRunning then
-		local X,Y,Z = workspace.CurrentCamera.CFrame.Position.X,workspace.CurrentCamera.CFrame.Position.Y,workspace.CurrentCamera.CFrame.Position.Z
-		local Format, Round = string.format, math.round
-		toClipboard(Format("%s, %s, %s", Round(X), Round(Y), Round(Z)))
-	end
+addcmd('copyfreecamposition', {'copyfcpos'}, function()
+	if not fcRunning then return end
+	local p = Camera.CFrame.Position
+	toClipboard(string.format("%d, %d, %d", p.X, p.Y, p.Z))
 end)
 
 addcmd('gotocamera',{'gotocam','tocam'},function(args, speaker)
@@ -11891,33 +11802,58 @@ addcmd('invisfling',{},function(args, speaker)
 	bambam.Location = getRoot(speaker.Character).Position
 end)
 
-addcmd("antifling", {}, function(args, speaker)
-	if antifling then
-		antifling:Disconnect()
-		antifling = nil
+local antiflingConnections = {}
+
+local function handleCharacter(character)
+	for _, v in ipairs(character:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.CanCollide = false
+		end
 	end
-	antifling = RunService.Stepped:Connect(function()
-		for _, player in pairs(Players:GetPlayers()) do
-			if player ~= speaker and player.Character then
-				for _, v in pairs(player.Character:GetDescendants()) do
-					if v:IsA("BasePart") then
-						v.CanCollide = false
-					end
-				end
-			end
+
+	-- Handle new parts added later (accessories, etc.)
+	local conn
+	conn = character.DescendantAdded:Connect(function(v)
+		if v:IsA("BasePart") then
+			v.CanCollide = false
 		end
 	end)
+
+	return conn
+end
+
+addcmd("antifling", {}, function(args, speaker)
+	-- Cleanup old connections
+	for _, conn in pairs(antiflingConnections) do
+		conn:Disconnect()
+	end
+	table.clear(antiflingConnections)
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= speaker then
+			if player.Character then
+				table.insert(antiflingConnections, handleCharacter(player.Character))
+			end
+
+			-- Listen for respawns
+			local conn = player.CharacterAdded:Connect(function(char)
+				table.insert(antiflingConnections, handleCharacter(char))
+			end)
+
+			table.insert(antiflingConnections, conn)
+		end
+	end
 end)
 
 addcmd("unantifling", {}, function(args, speaker)
-	if antifling then
-		antifling:Disconnect()
-		antifling = nil
+	for _, conn in pairs(antiflingConnections) do
+		conn:Disconnect()
 	end
+	table.clear(antiflingConnections)
 end)
 
 addcmd("toggleantifling", {}, function(args, speaker)
-	execCmd(antifling and "unantifling" or "antifling")
+	execCmd(#antiflingConnections > 0 and "unantifling" or "antifling")
 end)
 
 function attach(speaker,target)
